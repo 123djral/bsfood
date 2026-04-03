@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/recipe_generator?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    database: 0
+  security:
+    user:
+      name: admin
+      password: admin
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.bsfood.recipegenerator.entity
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# AI模型配置
+ai:
+  api-key: sk-80bf39560cf34c10a78f8e6c90de829b
+  base-url: https://ark.cn-beijing.volces.com/api/v3
