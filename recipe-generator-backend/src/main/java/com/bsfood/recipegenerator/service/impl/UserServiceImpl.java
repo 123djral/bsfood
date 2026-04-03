@@ -7,67 +7,113 @@ import com.bsfood.recipegenerator.mapper.UserMapper;
 import com.bsfood.recipegenerator.mapper.UserPreferenceMapper;
 import com.bsfood.recipegenerator.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 用户服务实现类
  */
 @Service
 public class UserServiceImpl implements UserService {
-    
+
+    private static final String PREFERENCE_CACHE_PREFIX = "user:preference:";
+
     @Autowired
     private UserMapper userMapper;
-    
+
     @Autowired
     private UserPreferenceMapper userPreferenceMapper;
-    
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
     @Override
     public boolean register(User user) {
-        // 检查用户名是否已存在
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         wrapper.eq("username", user.getUsername());
         if (userMapper.selectOne(wrapper) != null) {
             return false;
         }
-        // 设置创建时间
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCreateTime(new Date());
-        // 保存用户信息
         return userMapper.insert(user) > 0;
     }
-    
+
     @Override
     public User login(String username, String password) {
         QueryWrapper<User> wrapper = new QueryWrapper<>();
-        wrapper.eq("username", username).eq("password", password);
-        return userMapper.selectOne(wrapper);
+        wrapper.eq("username", username);
+        User user = userMapper.selectOne(wrapper);
+        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
+            return user;
+        }
+        return null;
     }
-    
+
     @Override
     public boolean update(User user) {
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         return userMapper.updateById(user) > 0;
     }
-    
+
     @Override
     public UserPreference getPreference(Long userId) {
+        // 先从Redis缓存读取
+        String cacheKey = PREFERENCE_CACHE_PREFIX + userId;
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached instanceof UserPreference) {
+                return (UserPreference) cached;
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 缓存未命中，查询数据库
         QueryWrapper<UserPreference> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId);
-        return userPreferenceMapper.selectOne(wrapper);
+        UserPreference preference = userPreferenceMapper.selectOne(wrapper);
+
+        // 写入缓存
+        if (preference != null) {
+            try {
+                redisTemplate.opsForValue().set(cacheKey, preference, 30, TimeUnit.MINUTES);
+            } catch (Exception ignored) {
+            }
+        }
+        return preference;
     }
-    
+
     @Override
     public boolean updatePreference(UserPreference preference) {
         QueryWrapper<UserPreference> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", preference.getUserId());
         UserPreference existing = userPreferenceMapper.selectOne(wrapper);
+
+        boolean success;
         if (existing != null) {
-            // 更新现有记录
             preference.setId(existing.getId());
-            return userPreferenceMapper.updateById(preference) > 0;
+            success = userPreferenceMapper.updateById(preference) > 0;
         } else {
-            // 创建新记录
-            return userPreferenceMapper.insert(preference) > 0;
+            success = userPreferenceMapper.insert(preference) > 0;
         }
+
+        // 更新缓存
+        if (success) {
+            try {
+                String cacheKey = PREFERENCE_CACHE_PREFIX + preference.getUserId();
+                redisTemplate.opsForValue().set(cacheKey, preference, 30, TimeUnit.MINUTES);
+            } catch (Exception ignored) {
+            }
+        }
+        return success;
     }
 }
