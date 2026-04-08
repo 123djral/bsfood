@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 食材控制器
@@ -28,11 +29,17 @@ public class FoodController {
      * @return 识别结果
      */
     @PostMapping("/recognize")
-    public Map<String, Object> recognize(@RequestParam(required = false) String text, 
-                                        @RequestParam(required = false) String image, 
-                                        @RequestParam String type) {
+    public Map<String, Object> recognize(@RequestBody(required = false) Map<String, Object> payload,
+                                        @RequestParam(required = false) String text,
+                                        @RequestParam(required = false) String image,
+                                        @RequestParam(required = false) String type) {
+        Map<String, Object> request = payload == null ? Map.of() : payload;
+        String resolvedText = text != null ? text : Objects.toString(request.get("text"), null);
+        String resolvedImage = image != null ? image : Objects.toString(request.get("image"), null);
+        String resolvedType = type != null ? type : Objects.toString(request.get("type"), null);
+
         Map<String, Object> result = new HashMap<>();
-        List<FoodMaterial> foodList = foodService.recognizeFood(text, image, type);
+        List<FoodMaterial> foodList = foodService.recognizeFood(resolvedText, resolvedImage, resolvedType);
         result.put("code", 200);
         result.put("message", "识别成功");
         result.put("data", Map.of("foodList", foodList, "status", "success"));

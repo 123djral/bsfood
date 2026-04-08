@@ -34,7 +34,7 @@ export const userApi = {
 
 // 食材相关
 export const foodApi = {
-  recognize: (text, image, type) => api.post(`/food/recognize?type=${type}${text ? '&text=' + encodeURIComponent(text) : ''}${image ? '&image=' + encodeURIComponent(image) : ''}`),
+  recognize: (text, image, type) => api.post('/food/recognize', { text, image, type }),
   save: (food) => api.post('/food/save', food),
   list: () => api.get('/food/list'),
   detail: (id) => api.get('/food/detail', { params: { id } }),
