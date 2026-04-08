@@ -1,24 +1,34 @@
 <template>
-  <div class="recipe">
-    <h2>食谱生成</h2>
-    <el-form :model="recipeForm" label-width="100px">
-      <el-form-item label="选择食材">
-        <el-select v-model="recipeForm.foodIds" multiple placeholder="请选择食材" style="width: 100%;">
-          <el-option v-for="food in foodList" :key="food.id" :label="food.name + ' (' + food.quantity + 'g)'" :value="food.id"></el-option>
-        </el-select>
-      </el-form-item>
-      <el-form-item label="食谱数量">
-        <el-input-number v-model="recipeForm.expectCount" :min="1" :max="5"></el-input-number>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="generateRecipe" :loading="generating">生成食谱</el-button>
-      </el-form-item>
-    </el-form>
+  <div class="recipe page-shell">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">食谱生成</h2>
+        <p class="page-subtitle">基于现有食材快速生成候选食谱，并查看收藏、营养分析与详情。</p>
+      </div>
+    </div>
+
+    <el-card shadow="hover" class="form-card">
+      <el-form :model="recipeForm" label-width="100px">
+        <el-form-item label="选择食材">
+          <el-select v-model="recipeForm.foodIds" multiple placeholder="请选择食材" style="width: 100%;">
+            <el-option v-for="food in foodList" :key="food.id" :label="food.name + ' (' + food.quantity + 'g)'" :value="food.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="食谱数量">
+          <el-input-number v-model="recipeForm.expectCount" :min="1" :max="5"></el-input-number>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="generateRecipe" :loading="generating">生成食谱</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
     <div v-if="recipes.length > 0" class="recipe-list">
-      <h3>生成的食谱</h3>
-      <el-row :gutter="20">
-        <el-col :span="8" v-for="recipe in recipes" :key="recipe.id">
+      <div class="section-heading">
+        <h3 class="section-title">生成的食谱</h3>
+      </div>
+      <el-row :gutter="20" class="recipe-grid">
+        <el-col :xs="24" :md="12" :xl="8" v-for="recipe in recipes" :key="recipe.id">
           <el-card shadow="hover" class="recipe-card">
             <template #header>
               <div class="card-header">
@@ -34,7 +44,7 @@
                 <strong>烹饪步骤：</strong>
                 <div class="steps-text">{{ recipe.steps }}</div>
               </div>
-              <div style="margin-top: 15px; display: flex; gap: 10px;">
+              <div class="action-row">
                 <el-button type="primary" size="small" @click="collectRecipe(recipe.id)">收藏</el-button>
                 <el-button type="success" size="small" @click="analyzeRecipeNutrition(recipe.id)">营养分析</el-button>
               </div>
@@ -47,23 +57,27 @@
     <el-divider v-if="recipes.length > 0"></el-divider>
 
     <div class="my-recipes">
-      <h3>我的食谱</h3>
-      <el-table :data="myRecipes" style="width: 100%" v-loading="loadingMyRecipes">
-        <el-table-column prop="name" label="食谱名称"></el-table-column>
-        <el-table-column prop="cookingTime" label="烹饪时间(分钟)" width="130"></el-table-column>
-        <el-table-column prop="difficultyLevel" label="难度" width="80"></el-table-column>
-        <el-table-column prop="collectCount" label="收藏数" width="80"></el-table-column>
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <el-button size="small" @click="viewDetail(scope.row)">详情</el-button>
-            <el-button size="small" type="danger" @click="deleteRecipe(scope.row.id)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="section-heading">
+        <h3 class="section-title">我的食谱</h3>
+      </div>
+      <el-card shadow="hover" class="table-card">
+        <el-table :data="myRecipes" style="width: 100%" v-loading="loadingMyRecipes">
+          <el-table-column prop="name" label="食谱名称"></el-table-column>
+          <el-table-column prop="cookingTime" label="烹饪时间(分钟)" width="130"></el-table-column>
+          <el-table-column prop="difficultyLevel" label="难度" width="80"></el-table-column>
+          <el-table-column prop="collectCount" label="收藏数" width="80"></el-table-column>
+          <el-table-column label="操作" width="200">
+            <template #default="scope">
+              <el-button size="small" @click="viewDetail(scope.row)">详情</el-button>
+              <el-button size="small" type="danger" @click="deleteRecipe(scope.row.id)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
     </div>
 
     <el-dialog v-model="detailVisible" title="食谱详情" width="600px">
-      <div v-if="currentRecipe">
+      <div v-if="currentRecipe" class="dialog-content">
         <h3>{{ currentRecipe.name }}</h3>
         <p><strong>烹饪时间：</strong>{{ currentRecipe.cookingTime }}分钟</p>
         <p><strong>难度等级：</strong>{{ currentRecipe.difficultyLevel }}</p>
@@ -194,39 +208,92 @@ export default {
 
 <style scoped>
 .recipe {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
-.recipe h2, .recipe h3 {
-  margin-bottom: 20px;
-  color: #333;
+
+.page-header,
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.recipe-list {
-  margin-top: 30px;
+
+.form-card :deep(.el-card__body),
+.table-card :deep(.el-card__body) {
+  padding: 24px;
 }
+
+.recipe-list,
+.my-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recipe-grid {
+  row-gap: 20px;
+}
+
 .recipe-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
+
+.recipe-card :deep(.el-card__header) {
+  padding: 20px 22px 0;
+  border-bottom: none;
+}
+
+.recipe-card :deep(.el-card__body) {
+  padding: 16px 22px 22px;
+}
+
 .card-header {
   display: flex;
-  justify-content: center;
-  font-weight: bold;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-primary);
 }
+
 .card-content p {
-  margin-bottom: 8px;
+  margin: 0 0 10px;
+  color: var(--text-secondary);
 }
+
 .steps-section {
   margin-top: 10px;
 }
+
 .steps-text {
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #555;
-  margin-top: 5px;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 4px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
 }
-.my-recipes {
-  margin-top: 20px;
+
+.action-row {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dialog-content h3,
+.dialog-content h4 {
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .form-card :deep(.el-card__body),
+  .table-card :deep(.el-card__body),
+  .recipe-card :deep(.el-card__body) {
+    padding: 18px;
+  }
 }
 </style>

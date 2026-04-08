@@ -1,12 +1,15 @@
 <template>
   <div class="login-container">
+    <div class="login-background"></div>
     <el-card class="login-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h2>{{ isRegister ? '用户注册' : '用户登录' }}</h2>
+          <span class="auth-badge">AI 饮食助手</span>
+          <h2>{{ isRegister ? '创建你的饮食档案' : '欢迎回来' }}</h2>
+          <p>{{ isRegister ? '填写基础信息后即可开始生成个性化食谱。' : '登录后继续管理食材、生成食谱与查看营养分析。' }}</p>
         </div>
       </template>
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px" class="auth-form">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名"></el-input>
         </el-form-item>
@@ -28,11 +31,11 @@
           </el-form-item>
         </template>
         <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="loading" style="width: 100%;">
+          <el-button type="primary" @click="handleSubmit" :loading="loading" class="submit-button">
             {{ isRegister ? '注册' : '登录' }}
           </el-button>
         </el-form-item>
-        <el-form-item>
+        <el-form-item class="switch-row">
           <el-link type="primary" @click="isRegister = !isRegister">
             {{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}
           </el-link>
@@ -110,22 +113,111 @@ export default {
 
 <style scoped>
 .login-container {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
+  min-height: calc(100vh - 190px);
+  padding: 24px 0;
+}
+
+.login-background {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(79, 70, 229, 0.12), transparent 26%),
+    rgba(255, 255, 255, 0.45);
+  filter: blur(0.2px);
 }
 
 .login-card {
-  width: 420px;
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.login-card :deep(.el-card__header) {
+  padding: 28px 28px 12px;
+  border-bottom: none;
+}
+
+.login-card :deep(.el-card__body) {
+  padding: 8px 28px 28px;
 }
 
 .card-header {
   text-align: center;
 }
 
+.auth-badge {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .card-header h2 {
+  margin: 14px 0 8px;
+  font-size: 28px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.card-header p {
   margin: 0;
-  color: #333;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.auth-form :deep(.el-form-item) {
+  margin-bottom: 22px;
+}
+
+.auth-form :deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.submit-button {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.switch-row :deep(.el-form-item__content) {
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    min-height: auto;
+    padding: 8px 0;
+  }
+
+  .login-background {
+    border-radius: 20px;
+  }
+
+  .login-card :deep(.el-card__header) {
+    padding: 24px 20px 10px;
+  }
+
+  .login-card :deep(.el-card__body) {
+    padding: 8px 20px 22px;
+  }
+
+  .card-header h2 {
+    font-size: 24px;
+  }
 }
 </style>

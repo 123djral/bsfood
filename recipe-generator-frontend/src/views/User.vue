@@ -1,9 +1,15 @@
 <template>
-  <div class="user">
-    <h2>个人中心</h2>
-    <el-row :gutter="20">
-      <el-col :span="12">
-        <el-card shadow="hover">
+  <div class="user page-shell">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">个人中心</h2>
+        <p class="page-subtitle">统一维护基础资料与饮食偏好，为后续食谱生成提供更精准的个性化依据。</p>
+      </div>
+    </div>
+
+    <el-row :gutter="20" class="profile-grid">
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover" class="profile-card">
           <template #header><div class="card-header"><span>基本信息</span></div></template>
           <el-form :model="userForm" label-width="100px">
             <el-form-item label="用户名">
@@ -27,8 +33,8 @@
           </el-form>
         </el-card>
       </el-col>
-      <el-col :span="12">
-        <el-card shadow="hover">
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover" class="profile-card">
           <template #header><div class="card-header"><span>饮食偏好</span></div></template>
           <el-form :model="preferenceForm" label-width="100px">
             <el-form-item label="健康目标">
@@ -149,14 +155,49 @@ export default {
 
 <style scoped>
 .user {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
-.user h2 {
-  margin-bottom: 20px;
-  color: #333;
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
+
+.profile-grid {
+  row-gap: 20px;
+}
+
+.profile-card {
+  height: 100%;
+}
+
+.profile-card :deep(.el-card__header) {
+  padding: 20px 24px 0;
+  border-bottom: none;
+}
+
+.profile-card :deep(.el-card__body) {
+  padding: 18px 24px 24px;
+}
+
 .card-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .profile-card :deep(.el-card__header) {
+    padding: 18px 18px 0;
+  }
+
+  .profile-card :deep(.el-card__body) {
+    padding: 16px 18px 18px;
+  }
 }
 </style>

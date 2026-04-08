@@ -1,55 +1,63 @@
 <template>
-  <div class="admin">
-    <h2>管理后台</h2>
-    <el-tabs v-model="activeTab" @tab-click="handleTabClick">
-      <el-tab-pane label="用户管理" name="user">
-        <el-table :data="userList" style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="用户ID" width="80"></el-table-column>
-          <el-table-column prop="username" label="用户名"></el-table-column>
-          <el-table-column prop="age" label="年龄" width="80"></el-table-column>
-          <el-table-column prop="gender" label="性别" width="80"></el-table-column>
-          <el-table-column prop="phone" label="手机号码"></el-table-column>
-          <el-table-column prop="createTime" label="创建时间"></el-table-column>
-          <el-table-column label="操作" width="100">
-            <template #default="scope">
-              <el-button size="small" type="danger" @click="deleteUser(scope.row.id)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
+  <div class="admin page-shell">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">管理后台</h2>
+        <p class="page-subtitle">集中查看用户、食材与食谱数据，保持现有管理逻辑不变，仅优化信息密度与视觉层次。</p>
+      </div>
+    </div>
 
-      <el-tab-pane label="食材管理" name="food">
-        <el-table :data="foodList" style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="80"></el-table-column>
-          <el-table-column prop="name" label="食材名称"></el-table-column>
-          <el-table-column prop="type" label="类别" width="120"></el-table-column>
-          <el-table-column prop="quantity" label="数量(g)"></el-table-column>
-          <el-table-column prop="shelfLife" label="保质期(天)" width="100"></el-table-column>
-          <el-table-column prop="createTime" label="创建时间"></el-table-column>
-          <el-table-column label="操作" width="100">
-            <template #default="scope">
-              <el-button size="small" type="danger" @click="deleteFood(scope.row.id)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
+    <el-card shadow="hover" class="admin-card">
+      <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+        <el-tab-pane label="用户管理" name="user">
+          <el-table :data="userList" style="width: 100%" v-loading="loading">
+            <el-table-column prop="id" label="用户ID" width="80"></el-table-column>
+            <el-table-column prop="username" label="用户名"></el-table-column>
+            <el-table-column prop="age" label="年龄" width="80"></el-table-column>
+            <el-table-column prop="gender" label="性别" width="80"></el-table-column>
+            <el-table-column prop="phone" label="手机号码"></el-table-column>
+            <el-table-column prop="createTime" label="创建时间"></el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="scope">
+                <el-button size="small" type="danger" @click="deleteUser(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
 
-      <el-tab-pane label="食谱管理" name="recipe">
-        <el-table :data="recipeList" style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="80"></el-table-column>
-          <el-table-column prop="name" label="食谱名称"></el-table-column>
-          <el-table-column prop="userId" label="用户ID" width="80"></el-table-column>
-          <el-table-column prop="cookingTime" label="烹饪时间(分钟)" width="120"></el-table-column>
-          <el-table-column prop="difficultyLevel" label="难度" width="80"></el-table-column>
-          <el-table-column prop="collectCount" label="收藏数" width="80"></el-table-column>
-          <el-table-column label="操作" width="100">
-            <template #default="scope">
-              <el-button size="small" type="danger" @click="deleteRecipe(scope.row.id)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-    </el-tabs>
+        <el-tab-pane label="食材管理" name="food">
+          <el-table :data="foodList" style="width: 100%" v-loading="loading">
+            <el-table-column prop="id" label="ID" width="80"></el-table-column>
+            <el-table-column prop="name" label="食材名称"></el-table-column>
+            <el-table-column prop="type" label="类别" width="120"></el-table-column>
+            <el-table-column prop="quantity" label="数量(g)"></el-table-column>
+            <el-table-column prop="shelfLife" label="保质期(天)" width="100"></el-table-column>
+            <el-table-column prop="createTime" label="创建时间"></el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="scope">
+                <el-button size="small" type="danger" @click="deleteFood(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="食谱管理" name="recipe">
+          <el-table :data="recipeList" style="width: 100%" v-loading="loading">
+            <el-table-column prop="id" label="ID" width="80"></el-table-column>
+            <el-table-column prop="name" label="食谱名称"></el-table-column>
+            <el-table-column prop="userId" label="用户ID" width="80"></el-table-column>
+            <el-table-column prop="cookingTime" label="烹饪时间(分钟)" width="120"></el-table-column>
+            <el-table-column prop="difficultyLevel" label="难度" width="80"></el-table-column>
+            <el-table-column prop="collectCount" label="收藏数" width="80"></el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="scope">
+                <el-button size="small" type="danger" @click="deleteRecipe(scope.row.id)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
   </div>
 </template>
 
@@ -145,10 +153,24 @@ export default {
 
 <style scoped>
 .admin {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
-.admin h2 {
-  margin-bottom: 20px;
-  color: #333;
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-card :deep(.el-card__body) {
+  padding: 22px 24px 24px;
+}
+
+@media (max-width: 768px) {
+  .admin-card :deep(.el-card__body) {
+    padding: 18px;
+  }
 }
 </style>

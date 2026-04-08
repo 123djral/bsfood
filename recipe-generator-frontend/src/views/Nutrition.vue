@@ -1,20 +1,31 @@
 <template>
-  <div class="nutrition">
-    <h2>营养分析</h2>
-    <el-form label-width="100px">
-      <el-form-item label="选择食谱">
-        <el-select v-model="selectedRecipeId" placeholder="请选择要分析的食谱" style="width: 100%;">
-          <el-option v-for="r in recipeList" :key="r.id" :label="r.name" :value="r.id"></el-option>
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="analyzeNutrition" :loading="analyzing">分析营养</el-button>
-      </el-form-item>
-    </el-form>
+  <div class="nutrition page-shell">
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">营养分析</h2>
+        <p class="page-subtitle">从已生成食谱中选择目标，查看营养成分、评估结果与改善建议。</p>
+      </div>
+    </div>
+
+    <el-card shadow="hover" class="form-card">
+      <el-form label-width="100px">
+        <el-form-item label="选择食谱">
+          <el-select v-model="selectedRecipeId" placeholder="请选择要分析的食谱" style="width: 100%;">
+            <el-option v-for="r in recipeList" :key="r.id" :label="r.name" :value="r.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="analyzeNutrition" :loading="analyzing">分析营养</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
     <div v-if="nutritionData" class="nutrition-data">
-      <h3>营养分析结果</h3>
-      <el-card shadow="hover">
+      <div class="section-heading">
+        <h3 class="section-title">营养分析结果</h3>
+      </div>
+
+      <el-card shadow="hover" class="table-card">
         <template #header>
           <div class="card-header"><span>营养成分</span></div>
         </template>
@@ -119,40 +130,74 @@ export default {
 
 <style scoped>
 .nutrition {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
-.nutrition h2 {
-  margin-bottom: 20px;
-  color: #333;
+
+.page-header,
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
+
+.form-card :deep(.el-card__body),
+.table-card :deep(.el-card__body) {
+  padding: 24px;
+}
+
+.table-card :deep(.el-card__header) {
+  padding: 20px 24px 0;
+  border-bottom: none;
+}
+
 .nutrition-data {
-  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.nutrition-data h3 {
-  margin-bottom: 20px;
-  color: #333;
-}
+
 .card-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
+
 .nutrition-report {
-  margin-top: 20px;
-  padding: 20px;
-  background-color: #f0f9eb;
-  border-radius: 4px;
-  border-left: 4px solid #67c23a;
+  padding: 22px;
+  background: var(--success-soft);
+  border: 1px solid rgba(34, 197, 94, 0.12);
+  border-radius: 18px;
 }
+
 .nutrition-report.suggestion {
-  background-color: #fdf6ec;
-  border-left-color: #e6a23c;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.16);
 }
+
 .nutrition-report h4 {
-  margin-bottom: 10px;
-  color: #333;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 18px;
 }
+
 .nutrition-report p {
+  margin: 0;
   line-height: 1.8;
-  color: #555;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .form-card :deep(.el-card__body),
+  .table-card :deep(.el-card__body) {
+    padding: 18px;
+  }
+
+  .nutrition-report {
+    padding: 18px;
+  }
 }
 </style>
