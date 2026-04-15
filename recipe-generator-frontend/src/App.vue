@@ -22,15 +22,16 @@
             <el-menu-item index="/food">食材管理</el-menu-item>
             <el-menu-item index="/recipe">食谱生成</el-menu-item>
             <el-menu-item index="/nutrition">营养分析</el-menu-item>
+            <el-menu-item index="/collection">我的收藏</el-menu-item>
             <el-menu-item index="/user">个人中心</el-menu-item>
-            <el-menu-item index="/admin">管理后台</el-menu-item>
+            <el-menu-item v-if="isAdmin" index="/admin">管理后台</el-menu-item>
           </el-menu>
 
           <div v-if="currentUser" class="user-info">
             <div class="user-avatar">{{ currentUser.username?.slice(0, 1)?.toUpperCase() }}</div>
             <div class="user-copy">
               <span class="user-name">{{ currentUser.username }}</span>
-              <span class="user-role">当前已登录</span>
+              <span class="user-role">{{ currentUser.username }} ({{ currentUser.role === 'ADMIN' ? '管理员' : '普通用户' }})</span>
             </div>
             <el-button class="logout-button" text @click="logout">退出</el-button>
           </div>
@@ -58,6 +59,9 @@ export default {
   computed: {
     currentUser() {
       return JSON.parse(localStorage.getItem('user') || 'null')
+    },
+    isAdmin() {
+      return this.currentUser?.role === 'ADMIN'
     }
   },
   methods: {

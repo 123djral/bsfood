@@ -68,22 +68,39 @@
                 <el-table-column prop="type" label="类别"></el-table-column>
                 <el-table-column prop="quantity" label="数量(g)"></el-table-column>
                 <el-table-column prop="shelfLife" label="保质期(天)"></el-table-column>
+                <el-table-column label="操作" width="100">
+                  <template #default="scope">
+                    <el-button type="warning" size="small" @click="openSubstituteDialog(scope.row, scope.$index)">替换</el-button>
+                  </template>
+                </el-table-column>
               </el-table>
             </div>
           </el-tab-pane>
 
           <el-tab-pane label="食材列表" name="list">
-            <el-button type="primary" size="small" @click="loadFoodList" class="refresh-button">刷新列表</el-button>
-            <el-table :data="foodList" style="width: 100%" v-loading="listLoading">
-              <el-table-column prop="id" label="ID" width="80"></el-table-column>
+            <div class="list-header">
+              <el-button type="primary" size="small" @click="loadFoodList" class="refresh-button">刷新列表</el-button>
+              <el-button type="danger" size="small" @click="deleteSelectedFoods" :disabled="selectedFoods.length === 0">
+                删除选中 ({{ selectedFoods.length }})
+              </el-button>
+            </div>
+            <el-table :data="foodList" style="width: 100%" v-loading="listLoading" @selection-change="handleSelectionChange">
+              <el-table-column type="selection" width="50"></el-table-column>
               <el-table-column prop="name" label="食材名称"></el-table-column>
-              <el-table-column prop="quantity" label="数量(g)"></el-table-column>
+              <el-table-column label="数量" width="120">
+                <template #default="scope">
+                  {{ scope.row.quantity ? `大约 ${scope.row.quantity}g` : '-' }}
+                </template>
+              </el-table-column>
               <el-table-column prop="type" label="类别"></el-table-column>
-              <el-table-column prop="shelfLife" label="保质期(天)" width="100"></el-table-column>
-              <el-table-column label="操作" width="200">
+              <el-table-column label="保质期" width="120">
+                <template #default="scope">
+                  {{ scope.row.shelfLife ? `大约 ${scope.row.shelfLife} 天` : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
                 <template #default="scope">
                   <el-button type="primary" size="small" @click="getSubstitute(scope.row)">替代推荐</el-button>
-                  <el-button type="danger" size="small" @click="deleteFood(scope.row.id)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -93,11 +110,36 @@
     </el-card>
 
     <el-dialog v-model="substituteVisible" title="替代食材推荐" width="500px">
-      <el-table :data="substituteList" v-loading="substituteLoading">
+      <el-table :data="substituteList" v-loading="substituteLoading" @row-click="selectSubstitute">
         <el-table-column prop="name" label="食材名称"></el-table-column>
         <el-table-column prop="type" label="类别"></el-table-column>
         <el-table-column prop="quantity" label="建议用量(g)"></el-table-column>
       </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="replaceDialogVisible" title="替换食材" width="500px">
+      <div class="replace-origin">
+        <span class="replace-label">原食材：</span>
+        <span class="replace-value">{{ substituteOriginal?.name }} ({{ substituteOriginal?.type }}，约{{ substituteOriginal?.quantity }}g)</span>
+      </div>
+      <el-divider />
+      <div class="replace-section">
+        <h4 class="replace-subtitle">从推荐列表选择：</h4>
+        <el-table :data="substituteList" v-loading="substituteLoading" size="small" highlight-current-row @row-click="selectSubstituteFromList">
+          <el-table-column prop="name" label="食材名称"></el-table-column>
+          <el-table-column prop="type" label="类别"></el-table-column>
+          <el-table-column prop="quantity" label="建议用量(g)"></el-table-column>
+        </el-table>
+      </div>
+      <el-divider>或</el-divider>
+      <div class="replace-section">
+        <h4 class="replace-subtitle">自行输入：</h4>
+        <el-input v-model="customReplaceName" placeholder="输入替换食材名称"></el-input>
+        <div class="custom-replace-btns">
+          <el-button type="primary" size="small" @click="confirmCustomReplace">确认替换</el-button>
+          <el-button size="small" @click="replaceDialogVisible = false">取消</el-button>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -122,11 +164,16 @@ export default {
       recognizing: false,
       recognizedList: [],
       foodList: [],
+      selectedFoods: [],  // 存储选中的食材
       listLoading: false,
       substituteVisible: false,
       substituteList: [],
       substituteLoading: false,
-      uploadedImageName: ''
+      uploadedImageName: '',
+      replaceDialogVisible: false,
+      substituteOriginal: null,
+      substituteIndex: null,
+      customReplaceName: ''
     }
   },
   computed: {
@@ -169,11 +216,42 @@ export default {
       }
       this.uploadedImageName = rawFile.name
       try {
-        this.imageDesc = await this.readFileAsDataUrl(rawFile)
+        this.imageDesc = await this.readFileAsDataUrlWithCompression(rawFile)
         await this.recognizeFood(true)
       } catch (e) {
         this.$message.error('图片读取失败，请重新上传')
       }
+    },
+    // 压缩图片并转为 Base64
+    readFileAsDataUrlWithCompression(file, maxWidth = 800, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const img = new Image()
+          img.onload = () => {
+            // 计算压缩后的尺寸
+            let width = img.width
+            let height = img.height
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width
+              width = maxWidth
+            }
+            // 绘制压缩后的图片
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, width, height)
+            // 转为 Base64 (使用 image/jpeg 格式体积更小)
+            const dataUrl = canvas.toDataURL('image/jpeg', quality)
+            resolve(dataUrl)
+          }
+          img.onerror = () => reject(new Error('image-load-failed'))
+          img.src = e.target.result
+        }
+        reader.onerror = () => reject(new Error('read-failed'))
+        reader.readAsDataURL(file)
+      })
     },
     readFileAsDataUrl(file) {
       return new Promise((resolve, reject) => {
@@ -204,14 +282,17 @@ export default {
       ;(foodList || []).forEach(food => {
         const name = this.normalizeIngredientName(food?.name)
         if (!this.isValidIngredientName(name)) return
-        if (map.has(name)) return
-        map.set(name, {
-          ...food,
-          name,
-          type: food?.type || '其他',
-          quantity: typeof food?.quantity === 'number' ? food.quantity : 100,
-          shelfLife: Number.isInteger(food?.shelfLife) ? food.shelfLife : 7
-        })
+        if (map.has(name)) {
+          map.get(name).quantity += (typeof food?.quantity === 'number' ? food.quantity : 100)
+        } else {
+          map.set(name, {
+            ...food,
+            name,
+            type: food?.type || '其他',
+            quantity: typeof food?.quantity === 'number' ? food.quantity : 100,
+            shelfLife: Number.isInteger(food?.shelfLife) ? food.shelfLife : 7
+          })
+        }
       })
       return Array.from(map.values())
     },
@@ -243,7 +324,8 @@ export default {
 
       this.recognizing = true
       try {
-        const res = await foodApi.recognize(this.textInput, this.imageDesc, this.inputType)
+        const userId = this.getCurrentUserId()
+        const res = await foodApi.recognize(this.textInput, this.imageDesc, this.inputType, userId)
         if (res.code === 200) {
           const normalizedFoods = this.normalizeRecognizedFoods(res.data?.foodList || [])
           if (normalizedFoods.length === 0) {
@@ -266,7 +348,8 @@ export default {
     async loadFoodList() {
       this.listLoading = true
       try {
-        const res = await foodApi.list()
+        const userId = this.getCurrentUserId()
+        const res = await foodApi.list(userId)
         if (res.code === 200) {
           this.foodList = res.data
         }
@@ -274,6 +357,40 @@ export default {
         console.error('加载食材列表失败:', e)
       } finally {
         this.listLoading = false
+      }
+    },
+    getCurrentUserId() {
+      // 优先从 localStorage 获取 userId
+      const userId = localStorage.getItem('userId')
+      if (userId) {
+        return parseInt(userId, 10)
+      }
+      // 如果没有，返回 null 或默认用户ID
+      return null
+    },
+    handleSelectionChange(selection) {
+      this.selectedFoods = selection
+    },
+    async deleteSelectedFoods() {
+      if (this.selectedFoods.length === 0) {
+        this.$message.warning('请先选择要删除的食材')
+        return
+      }
+      try {
+        await this.$confirm(`确定要删除选中的 ${this.selectedFoods.length} 个食材吗？`, '提示', { type: 'warning' })
+        const userId = this.getCurrentUserId()
+        let successCount = 0
+        for (const food of this.selectedFoods) {
+          const res = await foodApi.delete(food.id, userId)
+          if (res.code === 200) {
+            successCount++
+          }
+        }
+        this.$message.success(`成功删除 ${successCount} 个食材`)
+        this.selectedFoods = []
+        this.loadFoodList()
+      } catch {
+        // cancelled
       }
     },
     async deleteFood(id) {
@@ -303,6 +420,57 @@ export default {
       } finally {
         this.substituteLoading = false
       }
+    },
+    async openSubstituteDialog(food, index) {
+      this.substituteOriginal = food
+      this.substituteIndex = index
+      this.customReplaceName = ''
+      this.replaceDialogVisible = true
+      this.substituteLoading = true
+      try {
+        const res = await foodApi.substituteByName(food.name, food.type)
+        if (res.code === 200) {
+          this.substituteList = res.data || []
+        }
+      } catch (e) {
+        this.substituteList = []
+      } finally {
+        this.substituteLoading = false
+      }
+    },
+    selectSubstituteFromList(row) {
+      this.applySubstitute(row)
+    },
+    confirmCustomReplace() {
+      if (!this.customReplaceName.trim()) {
+        this.$message.warning('请输入替换食材名称')
+        return
+      }
+      this.applySubstitute({ name: this.customReplaceName.trim(), type: '其他', quantity: 100 })
+    },
+    applySubstitute(substitute) {
+      if (this.substituteIndex === null) return
+      const normalized = this.normalizeIngredientName(substitute.name)
+      if (!this.isValidIngredientName(normalized)) {
+        this.$message.warning('替换食材名称无效')
+        return
+      }
+      const existing = this.recognizedList.findIndex((f, i) => i !== this.substituteIndex && this.normalizeIngredientName(f.name) === normalized)
+      if (existing >= 0) {
+        this.recognizedList[existing].quantity += substitute.quantity || 100
+        this.recognizedList.splice(this.substituteIndex, 1)
+        this.$message.success(`已替换为"${normalized}"，数量已累计`)
+      } else {
+        this.recognizedList.splice(this.substituteIndex, 1, {
+          ...this.substituteOriginal,
+          name: normalized,
+          type: substitute.type || '其他',
+          quantity: substitute.quantity || 100
+        })
+        this.$message.success(`已替换为"${normalized}"`)
+      }
+      this.replaceDialogVisible = false
+      this.textInput = this.mergeIngredientText(this.recognizedList.map(f => f.name))
     }
   }
 }
@@ -410,6 +578,38 @@ export default {
 
 .refresh-button {
   margin-bottom: 16px;
+}
+
+.list-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.replace-origin {
+  padding: 8px 0;
+  color: var(--text-secondary);
+}
+
+.replace-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.replace-subtitle {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.replace-section {
+  margin-bottom: 10px;
+}
+
+.custom-replace-btns {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {

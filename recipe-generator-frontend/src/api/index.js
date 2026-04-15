@@ -5,11 +5,11 @@ const api = axios.create({
   timeout: 60000
 })
 
-// 请求拦截器 - 添加用户ID
+// 请求拦截器 - 添加 JWT Token
 api.interceptors.request.use(config => {
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
-  if (user && user.id) {
-    config.headers['X-User-Id'] = user.id
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
   }
   return config
 })
@@ -29,30 +29,34 @@ export const userApi = {
   register: (user) => api.post('/user/register', user),
   update: (user) => api.put('/user/update', user),
   getPreference: (userId) => api.get('/user/preference', { params: { userId } }),
-  updatePreference: (preference) => api.put('/user/preference', preference)
+  updatePreference: (preference) => api.put('/user/preference', preference),
+  getCurrentUser: () => api.get('/user/me')
 }
 
 // 食材相关
 export const foodApi = {
-  recognize: (text, image, type) => api.post('/food/recognize', { text, image, type }),
-  save: (food) => api.post('/food/save', food),
-  list: () => api.get('/food/list'),
-  detail: (id) => api.get('/food/detail', { params: { id } }),
-  update: (food) => api.put('/food/update', food),
-  delete: (id) => api.delete('/food/delete', { params: { id } }),
+  recognize: (text, image, type, userId) => api.post('/food/recognize', { text, image, type, userId }),
+  save: (food, userId) => api.post('/food/save', { ...food, userId }),
+  list: (userId) => api.get('/food/list', { params: { userId } }),
+  detail: (id, userId) => api.get('/food/detail', { params: { id, userId } }),
+  update: (food, userId) => api.put('/food/update', { ...food, userId }),
+  delete: (id, userId) => api.delete('/food/delete', { params: { id, userId } }),
   nutrition: (foodId) => api.get('/food/nutrition', { params: { foodId } }),
-  substitute: (foodId) => api.get('/food/substitute', { params: { foodId } })
+  substitute: (foodId) => api.get('/food/substitute', { params: { foodId } }),
+  substituteByName: (foodName, foodType) => api.get('/food/substituteByName', { params: { foodName, foodType } })
 }
 
 // 食谱相关
 export const recipeApi = {
   generate: (userId, foodIds, expectCount) => api.post(`/recipe/generate?userId=${userId}&foodIds=${foodIds.join(',')}&expectCount=${expectCount}`),
-  save: (recipe) => api.post('/recipe/save', recipe),
+  save: (recipe, userId) => api.post('/recipe/save', { ...recipe, userId }),
   list: (userId) => api.get('/recipe/list', { params: { userId } }),
-  detail: (id) => api.get('/recipe/detail', { params: { id } }),
-  update: (recipe) => api.put('/recipe/update', recipe),
-  delete: (id) => api.delete('/recipe/delete', { params: { id } }),
-  collect: (id) => api.post('/recipe/collect', null, { params: { id } })
+  detail: (id, userId) => api.get('/recipe/detail', { params: { id, userId } }),
+  update: (recipe, userId) => api.put('/recipe/update', { ...recipe, userId }),
+  delete: (id, userId) => api.delete('/recipe/delete', { params: { id, userId } }),
+  collect: (id) => api.post('/recipe/collect', null, { params: { id } }),
+  collectPersonal: (recipeId, userId) => api.post('/recipe/collectPersonal', null, { params: { recipeId, userId } }),
+  collected: (userId) => api.get('/recipe/collected', { params: { userId } })
 }
 
 // 营养相关

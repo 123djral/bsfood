@@ -13,7 +13,7 @@ public interface UserService {
      * @return 注册结果
      */
     boolean register(User user);
-    
+
     /**
      * 用户登录
      * @param username 用户名
@@ -21,21 +21,28 @@ public interface UserService {
      * @return 用户信息
      */
     User login(String username, String password);
-    
+
+    /**
+     * 根据ID获取用户
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+    User getUserById(Long userId);
+
     /**
      * 更新用户信息
      * @param user 用户信息
      * @return 更新结果
      */
     boolean update(User user);
-    
+
     /**
      * 获取用户偏好
      * @param userId 用户ID
      * @return 用户偏好
      */
     UserPreference getPreference(Long userId);
-    
+
     /**
      * 更新用户偏好
      * @param preference 用户偏好

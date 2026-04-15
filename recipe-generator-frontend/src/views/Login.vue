@@ -86,15 +86,22 @@ export default {
             phone: this.form.phone
           })
           if (res.code === 200) {
-            this.$message.success('注册成功，请登录')
-            this.isRegister = false
+            // 注册成功后自动保存并登录
+            localStorage.setItem('user', JSON.stringify(res.data))
+            localStorage.setItem('userId', res.data.userId)
+            localStorage.setItem('token', res.data.token)
+            this.$message.success('注册成功，已自动登录')
+            this.$router.push('/')
           } else {
             this.$message.error(res.message)
           }
         } else {
           const res = await userApi.login(this.form.username, this.form.password)
           if (res.code === 200) {
+            // 保存用户信息和 Token
             localStorage.setItem('user', JSON.stringify(res.data))
+            localStorage.setItem('userId', res.data.userId)
+            localStorage.setItem('token', res.data.token)
             this.$message.success('登录成功')
             this.$router.push('/')
           } else {

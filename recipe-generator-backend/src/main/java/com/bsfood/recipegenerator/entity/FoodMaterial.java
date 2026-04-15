@@ -41,7 +41,12 @@ public class FoodMaterial {
      * 营养数据ID
      */
     private Long nutritionId;
-    
+
+    /**
+     * 用户ID（用于数据隔离）
+     */
+    private Long userId;
+
     /**
      * 创建时间
      */
@@ -94,6 +99,14 @@ public class FoodMaterial {
 
     public void setNutritionId(Long nutritionId) {
         this.nutritionId = nutritionId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Date getCreateTime() {

@@ -9,7 +9,7 @@ import java.util.Date;
 /**
  * 用户实体类
  */
-@TableName("user")
+@TableName("`user`")
 public class User {
     /**
      * 用户ID
@@ -46,6 +46,11 @@ public class User {
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 用户角色：USER=普通用户，ADMIN=管理员
+     */
+    private String role;
 
     // Getter and Setter methods
     public Long getId() {
@@ -102,5 +107,13 @@ public class User {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

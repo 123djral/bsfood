@@ -100,9 +100,9 @@ export default {
   mounted() {
     const user = JSON.parse(localStorage.getItem('user') || 'null')
     if (user) {
-      this.userForm = { ...user, age: user.age || '' }
-      this.preferenceForm.userId = user.id
-      this.loadPreference(user.id)
+      this.userForm = { ...user, id: user.userId, age: user.age || '' }
+      this.preferenceForm.userId = user.userId
+      this.loadPreference(user.userId)
     }
   },
   methods: {

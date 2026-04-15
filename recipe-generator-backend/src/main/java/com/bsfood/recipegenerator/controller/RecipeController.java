@@ -143,4 +143,34 @@ public class RecipeController {
         }
         return result;
     }
+
+    /**
+     * 个人收藏/取消收藏食谱
+     * @param recipeId 食谱ID
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @PostMapping("/collectPersonal")
+    public Map<String, Object> collectPersonal(@RequestParam Long recipeId, @RequestParam Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        boolean success = recipeService.collectRecipe(recipeId, userId);
+        result.put("code", 200);
+        result.put("message", success ? "操作成功" : "操作失败");
+        return result;
+    }
+
+    /**
+     * 获取用户收藏的食谱列表
+     * @param userId 用户ID
+     * @return 收藏的食谱列表
+     */
+    @GetMapping("/collected")
+    public Map<String, Object> getCollectedRecipes(@RequestParam Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        List<Recipe> recipes = recipeService.getCollectedRecipes(userId);
+        result.put("code", 200);
+        result.put("message", "获取成功");
+        result.put("data", recipes);
+        return result;
+    }
 }

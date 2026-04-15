@@ -14,55 +14,69 @@ public interface FoodService {
      * @param text 文本食材信息
      * @param image 图像食材信息
      * @param type 输入类型
+     * @param userId 用户ID
      * @return 识别结果
      */
-    List<FoodMaterial> recognizeFood(String text, String image, String type);
-    
+    List<FoodMaterial> recognizeFood(String text, String image, String type, Long userId);
+
     /**
      * 保存食材
      * @param foodMaterial 食材信息
+     * @param userId 用户ID
      * @return 保存结果
      */
-    boolean saveFood(FoodMaterial foodMaterial);
-    
+    boolean saveFood(FoodMaterial foodMaterial, Long userId);
+
     /**
      * 获取食材列表
+     * @param userId 用户ID
      * @return 食材列表
      */
-    List<FoodMaterial> getFoodList();
-    
+    List<FoodMaterial> getFoodList(Long userId);
+
     /**
      * 获取食材详情
      * @param id 食材ID
+     * @param userId 用户ID
      * @return 食材详情
      */
-    FoodMaterial getFoodById(Long id);
-    
+    FoodMaterial getFoodById(Long id, Long userId);
+
     /**
      * 更新食材
      * @param foodMaterial 食材信息
+     * @param userId 用户ID
      * @return 更新结果
      */
-    boolean updateFood(FoodMaterial foodMaterial);
-    
+    boolean updateFood(FoodMaterial foodMaterial, Long userId);
+
     /**
      * 删除食材
      * @param id 食材ID
+     * @param userId 用户ID
      * @return 删除结果
      */
-    boolean deleteFood(Long id);
-    
+    boolean deleteFood(Long id, Long userId);
+
     /**
      * 获取食材营养数据
      * @param foodId 食材ID
      * @return 营养数据
      */
     Nutrition getNutritionByFoodId(Long foodId);
-    
+
     /**
      * 推荐食材替代方案
      * @param foodId 食材ID
      * @return 替代食材列表
      */
     List<FoodMaterial> getSubstituteFood(Long foodId);
+
+    /**
+     * 根据食材名称推荐替代食材
+     * @param foodName 食材名称
+     * @param foodType 食材类型
+     * @return 替代食材列表
+     */
+    List<FoodMaterial> getSubstituteByName(String foodName, String foodType);
 }

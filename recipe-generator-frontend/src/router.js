@@ -33,6 +33,11 @@ const routes = [
     component: () => import('./views/User.vue')
   },
   {
+    path: '/collection',
+    name: 'Collection',
+    component: () => import('./views/Collection.vue')
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('./views/Admin.vue')
@@ -49,6 +54,8 @@ router.beforeEach((to, from, next) => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   if (!to.meta.public && !user) {
     next('/login')
+  } else if (to.path === '/admin' && user?.role !== 'ADMIN') {
+    next('/')
   } else {
     next()
   }

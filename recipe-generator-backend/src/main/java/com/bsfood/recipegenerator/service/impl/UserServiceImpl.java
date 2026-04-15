@@ -43,6 +43,7 @@ public class UserServiceImpl implements UserService {
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCreateTime(new Date());
+        user.setRole("USER");
         return userMapper.insert(user) > 0;
     }
 
@@ -55,6 +56,11 @@ public class UserServiceImpl implements UserService {
             return user;
         }
         return null;
+    }
+
+    @Override
+    public User getUserById(Long userId) {
+        return userMapper.selectById(userId);
     }
 
     @Override

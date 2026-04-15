@@ -10,8 +10,9 @@ CREATE TABLE IF NOT EXISTS `user` (
     `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `password` VARCHAR(100) NOT NULL COMMENT '加密存储',
     `age` INT(3) DEFAULT NULL COMMENT '用户年龄',
-    `gender` CHAR(2) DEFAULT NULL COMMENT '用户性别',
+    `gender` CHAR(10) DEFAULT NULL COMMENT '用户性别',
     `phone` VARCHAR(11) DEFAULT NULL COMMENT '手机号码',
+    `role` VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '用户角色：USER=普通用户，ADMIN=管理员',
     `create_time` DATETIME NOT NULL COMMENT '创建时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_username` (`username`),
@@ -78,3 +79,15 @@ CREATE TABLE IF NOT EXISTS `recipe` (
     KEY `idx_difficulty` (`difficulty_level`),
     CONSTRAINT `fk_recipe_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='食谱表';
+
+-- 用户收藏表
+CREATE TABLE IF NOT EXISTS `user_collection` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT COMMENT '收藏ID',
+    `user_id` INT(11) NOT NULL COMMENT '关联用户',
+    `recipe_id` INT(11) NOT NULL COMMENT '关联食谱',
+    `create_time` DATETIME NOT NULL COMMENT '收藏时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_recipe` (`user_id`, `recipe_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_recipe_id` (`recipe_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表';

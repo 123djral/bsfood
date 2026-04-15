@@ -65,11 +65,6 @@ export default {
       suggestion: ''
     }
   },
-  computed: {
-    currentUser() {
-      return JSON.parse(localStorage.getItem('user') || 'null')
-    }
-  },
   mounted() {
     this.loadRecipes()
     // 如果从食谱页面跳转过来
@@ -79,10 +74,18 @@ export default {
     }
   },
   methods: {
+    getCurrentUserId() {
+      const userId = localStorage.getItem('userId')
+      if (userId) {
+        return parseInt(userId, 10)
+      }
+      return null
+    },
     async loadRecipes() {
-      if (!this.currentUser) return
+      const userId = this.getCurrentUserId()
+      if (!userId) return
       try {
-        const res = await recipeApi.list(this.currentUser.id)
+        const res = await recipeApi.list(userId)
         if (res.code === 200) {
           this.recipeList = res.data || []
         }

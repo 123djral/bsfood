@@ -25,5 +25,8 @@ server:
 
 # AI模型配置
 ai:
-  api-key: sk-80bf39560cf34c10a78f8e6c90de829b
-  base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  api-key: sk-cp-U1_sSqUepX3JznIwxML8uzBPa-9ikjp_GMoXpZ63Lc_va7o7JPTjbqPGMIqh_B9WChJihqqxFtY-inPUfXlVBAOp0T23Q_2fpj3WiJeoJUV4GjXqfzzOQBo
+  base-url: https://api.minimaxi.com/v1
+  # Qwen-VL 图像理解配置（阿里云百炼）
+  dashscope-api-key: sk-80bf39560cf34c10a78f8e6c90de829b
+  dashscope-base-url: https://dashscope.aliyuncs.com/compatible-mode/v1

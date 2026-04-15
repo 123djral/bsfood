@@ -58,4 +58,19 @@ public interface RecipeService {
      * @return 收藏结果
      */
     boolean collectRecipe(Long id);
+
+    /**
+     * 收藏/取消收藏食谱（个人收藏）
+     * @param recipeId 食谱ID
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    boolean collectRecipe(Long recipeId, Long userId);
+
+    /**
+     * 获取用户收藏的食谱列表
+     * @param userId 用户ID
+     * @return 收藏的食谱列表
+     */
+    List<Recipe> getCollectedRecipes(Long userId);
 }
