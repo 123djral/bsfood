@@ -33,6 +33,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/user/login", "/api/user/register").permitAll()
                 .requestMatchers("/api/**").permitAll()  // JWT认证在过滤器中处理
+                .requestMatchers("/picture/**").permitAll()  // 放行图片访问
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

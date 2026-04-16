@@ -367,7 +367,8 @@ public class AiApiClient {
         StringBuilder systemPrompt = new StringBuilder();
         systemPrompt.append("你是一个专业厨师和食谱设计师。根据用户提供的食材，生成个性化食谱。");
         systemPrompt.append("你可以在用户提供的食材基础上自动补充常见调味料和辅料。");
-        systemPrompt.append("请以JSON数组格式返回，每个食谱包含：name(食谱名称)、cookingTime(烹饪时间分钟数)、difficultyLevel(难度：简单/中等/困难)、steps(详细烹饪步骤，字符串，每步用序号开头)、foodIds(使用的食材名称列表，字符串)。");
+        systemPrompt.append("请以JSON数组格式返回，每个食谱包含：name(中文食谱名称)、englishName(英文食谱名称，必须是真实存在的英文菜名)、imageKeyword(图片搜索关键词，用于在Spoonacular图片API搜索，要求是简洁的英文关键词如'kung pao chicken'或'egg fried rice'，必须是Spoonacular数据库中存在的菜谱关键词)、cookingTime(烹饪时间分钟数)、difficultyLevel(难度：简单/中等/困难)、steps(详细烹饪步骤，字符串，每步用序号开头)、foodIds(使用的食材名称列表，字符串)。");
+        systemPrompt.append("重要提示：imageKeyword必须是非常简洁的1-3个单词组合，是Spoonacular等图片API中最可能匹配到的搜索词，例如'kung pao chicken'、'egg fried rice'、'tomato egg stir-fry'、'honey garlic salmon'、'mapo tofu'、'steamed fish'等。请根据中文菜名生成最可能被图片API识别的英文关键词。");
         systemPrompt.append("只返回JSON数组，不要其他文字。");
 
         StringBuilder userPrompt = new StringBuilder();
@@ -421,6 +422,66 @@ public class AiApiClient {
     }
 
     /**
+     * 使用 MiniMax image-01 模型生成食谱图片
+     * @param recipeName 食谱名称（中文）
+     * @param englishName 英文名称
+     * @param prompt 英文图片描述 prompt
+     * @return 生成的图片URL
+     */
+    public String generateRecipeImage(String recipeName, String englishName, String prompt) {
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("model", "image-01");
+        // 构建图片生成prompt：生成一张美食图片，真实照片风格
+        String imagePrompt = String.format(
+            "A professional food photography of %s, Chinese dish, appetizing presentation, restaurant style, top-down angle, natural lighting, 4K quality, the dish name is %s in Chinese",
+            englishName != null && !englishName.isEmpty() ? englishName : recipeName,
+            recipeName
+        );
+        requestBody.put("prompt", imagePrompt);
+        requestBody.put("aspect_ratio", "1:1");
+        requestBody.put("response_format", "url");
+        requestBody.put("n", 1);
+        requestBody.put("prompt_optimizer", true);
+
+        String requestJson = requestBody.toJSONString();
+        System.out.println(">>> 发送图片生成请求: " + imagePrompt);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/image_generation"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .timeout(Duration.ofSeconds(120))
+                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String responseBody = response.body();
+            System.out.println(">>> 图片生成响应状态: " + response.statusCode());
+            System.out.println(">>> 图片生成响应内容: " + (responseBody != null && responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody));
+
+            if (response.statusCode() == 200) {
+                JSONObject respJson = JSON.parseObject(responseBody);
+                JSONObject baseResp = respJson.getJSONObject("base_resp");
+                if (baseResp != null && baseResp.getInteger("status_code") != 0) {
+                    throw new RuntimeException("图片生成失败: " + baseResp.getString("status_msg"));
+                }
+                JSONObject data = respJson.getJSONObject("data");
+                if (data != null && data.containsKey("image_urls")) {
+                    JSONArray imageUrls = data.getJSONArray("image_urls");
+                    if (imageUrls != null && !imageUrls.isEmpty()) {
+                        return imageUrls.getString(0);
+                    }
+                }
+                throw new RuntimeException("图片生成返回数据格式异常");
+            }
+            throw new RuntimeException("图片生成API调用失败，状态码: " + response.statusCode());
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("图片生成异常: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 推荐替代食材
      */
     public List<FoodMaterial> recommendSubstitute(String foodName, String foodType) {
@@ -457,23 +518,97 @@ public class AiApiClient {
 
     private List<Recipe> parseRecipeListFromJson(String json, Long userId) {
         List<Recipe> recipeList = new ArrayList<>();
+        if (json == null || json.trim().isEmpty()) {
+            throw new RuntimeException("AI返回内容为空");
+        }
         try {
             JSONArray arr = JSON.parseArray(json);
             for (int i = 0; i < arr.size(); i++) {
-                JSONObject obj = arr.getJSONObject(i);
-                Recipe recipe = new Recipe();
-                recipe.setName(obj.getString("name"));
-                recipe.setUserId(userId);
-                recipe.setCookingTime(obj.containsKey("cookingTime") ? obj.getInteger("cookingTime") : 30);
-                recipe.setDifficultyLevel(obj.containsKey("difficultyLevel") ? obj.getString("difficultyLevel") : "中等");
-                recipe.setSteps(obj.containsKey("steps") ? obj.getString("steps") : "");
-                recipe.setFoodIds(obj.containsKey("foodIds") ? obj.getString("foodIds") : "");
-                recipe.setCollectCount(0);
-                recipeList.add(recipe);
+                try {
+                    JSONObject obj = arr.getJSONObject(i);
+                    Recipe recipe = new Recipe();
+                    recipe.setName(obj.getString("name"));
+                    recipe.setEnglishName(obj.containsKey("englishName") && obj.getString("englishName") != null ? obj.getString("englishName") : obj.getString("name"));
+                    // imageKeyword用于Spoonacular图片搜索，优先级最高
+                    if (obj.containsKey("imageKeyword") && obj.getString("imageKeyword") != null && !obj.getString("imageKeyword").isEmpty()) {
+                        recipe.setImageKeyword(obj.getString("imageKeyword"));
+                    } else {
+                        recipe.setImageKeyword(obj.getString("englishName"));
+                    }
+                    recipe.setUserId(userId);
+                    recipe.setCookingTime(obj.containsKey("cookingTime") && obj.get("cookingTime") != null ? obj.getInteger("cookingTime") : 30);
+                    recipe.setDifficultyLevel(obj.containsKey("difficultyLevel") && obj.getString("difficultyLevel") != null ? obj.getString("difficultyLevel") : "中等");
+                    recipe.setSteps(obj.containsKey("steps") && obj.getString("steps") != null ? obj.getString("steps") : "");
+                    recipe.setFoodIds(obj.containsKey("foodIds") && obj.getString("foodIds") != null ? obj.getString("foodIds") : "");
+                    recipe.setCollectCount(0);
+                    recipeList.add(recipe);
+                } catch (Exception e) {
+                    System.out.println(">>> 解析单个食谱失败，跳过: " + e.getMessage());
+                    continue;
+                }
             }
         } catch (Exception e) {
-            throw new RuntimeException("解析AI返回的食谱数据失败: " + e.getMessage(), e);
+            System.out.println(">>> JSON解析失败，尝试修复: " + e.getMessage());
+            // 尝试修复不完整的JSON
+            String fixedJson = fixMalformedJson(json);
+            if (fixedJson != null) {
+                try {
+                    JSONArray arr = JSON.parseArray(fixedJson);
+                    for (int i = 0; i < arr.size(); i++) {
+                        try {
+                            JSONObject obj = arr.getJSONObject(i);
+                            Recipe recipe = new Recipe();
+                            recipe.setName(obj.getString("name"));
+                            recipe.setEnglishName(obj.containsKey("englishName") && obj.getString("englishName") != null ? obj.getString("englishName") : obj.getString("name"));
+                            recipe.setUserId(userId);
+                            recipe.setCookingTime(obj.containsKey("cookingTime") && obj.get("cookingTime") != null ? obj.getInteger("cookingTime") : 30);
+                            recipe.setDifficultyLevel(obj.containsKey("difficultyLevel") && obj.getString("difficultyLevel") != null ? obj.getString("difficultyLevel") : "中等");
+                            recipe.setSteps(obj.containsKey("steps") && obj.getString("steps") != null ? obj.getString("steps") : "");
+                            recipe.setFoodIds(obj.containsKey("foodIds") && obj.getString("foodIds") != null ? obj.getString("foodIds") : "");
+                            recipe.setCollectCount(0);
+                            recipeList.add(recipe);
+                        } catch (Exception ex) {
+                            continue;
+                        }
+                    }
+                } catch (Exception ex2) {
+                    throw new RuntimeException("解析AI返回的食谱数据失败: " + ex2.getMessage() + "，原始内容: " + json);
+                }
+            } else {
+                throw new RuntimeException("解析AI返回的食谱数据失败: " + e.getMessage() + "，原始内容: " + json);
+            }
+        }
+        if (recipeList.isEmpty()) {
+            throw new RuntimeException("未能解析出有效的食谱数据");
         }
         return recipeList;
+    }
+
+    /**
+     * 尝试修复不完整的JSON
+     */
+    private String fixMalformedJson(String json) {
+        if (json == null || json.trim().isEmpty()) {
+            return null;
+        }
+        // 如果不是以 [ 开头，尝试找到第一个 [
+        if (!json.trim().startsWith("[")) {
+            int idx = json.indexOf('[');
+            if (idx >= 0) {
+                json = json.substring(idx);
+            }
+        }
+        // 尝试补全JSON数组
+        int lastClose = json.lastIndexOf(']');
+        if (lastClose < json.length() - 1) {
+            json = json.substring(0, lastClose + 1);
+        }
+        // 验证是否可以被解析
+        try {
+            JSON.parseArray(json);
+            return json;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

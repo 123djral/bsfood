@@ -79,13 +79,31 @@
       </el-card>
     </div>
 
-    <el-dialog v-model="detailVisible" title="食谱详情" width="700px">
+    <el-dialog v-model="detailVisible" title="食谱详情" width="800px">
       <div v-if="currentRecipe" class="dialog-content">
-        <h2 class="recipe-title">{{ currentRecipe.name }}</h2>
-        <div class="recipe-meta">
-          <el-tag type="warning">⏱ 约 {{ currentRecipe.cookingTime }} 分钟</el-tag>
-          <el-tag type="info">📊 {{ currentRecipe.difficultyLevel }}</el-tag>
-          <el-tag type="success">⭐ {{ currentRecipe.collectCount }} 次收藏</el-tag>
+        <div class="recipe-header">
+          <div class="recipe-image-section">
+            <img v-if="recipeImage" :src="recipeImage" alt="美食效果图" class="recipe-image" />
+            <div v-else-if="imageLoading" class="image-placeholder loading">
+              <span class="loading-text">加载图片中...</span>
+            </div>
+            <div v-else class="image-placeholder">
+              <span class="placeholder-icon">🍽️</span>
+              <span class="placeholder-text">暂无图片</span>
+            </div>
+          </div>
+          <div class="recipe-info">
+            <h2 class="recipe-title">{{ currentRecipe.name }}</h2>
+            <div class="recipe-meta">
+              <el-tag type="warning">⏱ 约 {{ currentRecipe.cookingTime }} 分钟</el-tag>
+              <el-tag type="info">📊 {{ currentRecipe.difficultyLevel }}</el-tag>
+            </div>
+            <div class="recipe-tags">
+              <span class="recipe-tag" @click="refreshImage">
+                <span>🔄</span> 换一张
+              </span>
+            </div>
+          </div>
         </div>
         <el-divider></el-divider>
         <h4>📝 详细烹饪步骤</h4>
@@ -124,7 +142,9 @@ export default {
       loadingMyRecipes: false,
       detailVisible: false,
       currentRecipe: null,
-      userPreference: null
+      userPreference: null,
+      recipeImage: '',
+      imageLoading: false
     }
   },
   mounted() {
@@ -265,6 +285,103 @@ export default {
     viewDetail(recipe) {
       this.currentRecipe = recipe
       this.detailVisible = true
+      // 优先使用已生成的AI图片
+      if (recipe.imageUrl) {
+        this.recipeImage = recipe.imageUrl
+        this.imageLoading = false
+      } else {
+        // 调用后端生成MiniMax图片
+        this.generateMiniMaxImage(recipe.id)
+      }
+    },
+    async generateMiniMaxImage(recipeId) {
+      this.imageLoading = true
+      this.recipeImage = ''
+      try {
+        const res = await fetch(`/api/recipe/generateImage?id=${recipeId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        const data = await res.json()
+        if (data.code === 200 && data.data && data.data.imageUrl) {
+          this.recipeImage = data.data.imageUrl
+          // 更新当前食谱的图片URL
+          if (this.currentRecipe) {
+            this.currentRecipe.imageUrl = data.data.imageUrl
+          }
+          this.imageLoading = false
+          return
+        }
+      } catch (e) {
+        console.error('MiniMax图片生成失败:', e)
+      }
+      // 兜底: 使用Spoonacular搜索
+      this.imageLoading = false
+      if (this.currentRecipe) {
+        this.fetchRecipeImage(this.currentRecipe.imageKeyword || this.currentRecipe.englishName || this.currentRecipe.name)
+      }
+    },
+    // 提取食材关键词用于后备搜索
+    extractFoodKeywords(name) {
+      const keywords = []
+      const foods = ['chicken', 'beef', 'pork', 'fish', 'egg', 'tofu', 'vegetable', 'shrimp', 'rice', 'noodle', 'tomato', 'potato', 'cabbage', 'carrot', 'mushroom', 'corn', 'milk', 'honey', 'garlic', 'ginger']
+      const lowerName = name.toLowerCase()
+      foods.forEach(food => {
+        if (lowerName.includes(food)) {
+          keywords.push(food)
+        }
+      })
+      return keywords
+    },
+    async fetchRecipeImage(searchKeyword) {
+      this.imageLoading = true
+      this.recipeImage = ''
+      const apiKey = '07778492d7b54f5cad6c99e09a4d1cb1'
+      try {
+        // 策略1: AI优化关键词搜索 (最精准)
+        if (searchKeyword) {
+          let res = await fetch(`https://api.spoonacular.com/recipes/complexSearch?query=${encodeURIComponent(searchKeyword)}&number=5&apiKey=${apiKey}`)
+          let data = await res.json()
+          if (data.results && data.results.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(data.results.length, 5))
+            this.recipeImage = data.results[randomIndex].image
+            this.imageLoading = false
+            return
+          }
+        }
+
+        // 策略2: 提取食材关键词搜索
+        const keywords = this.extractFoodKeywords(searchKeyword || '')
+        if (keywords.length > 0) {
+          let res = await fetch(`https://api.spoonacular.com/recipes/complexSearch?query=${encodeURIComponent(keywords[0])}&number=10&apiKey=${apiKey}`)
+          let data = await res.json()
+          if (data.results && data.results.length > 0) {
+            const randomMeal = data.results[Math.floor(Math.random() * Math.min(data.results.length, 10))]
+            this.recipeImage = randomMeal.image
+            this.imageLoading = false
+            return
+          }
+        }
+
+        // 策略3: 使用分类随机获取
+        const categories = ['chicken', 'beef', 'pork', 'fish', 'vegetarian', 'pasta', 'dessert', 'breakfast', 'salad', 'soup']
+        const randomCat = categories[Math.floor(Math.random() * categories.length)]
+        let res = await fetch(`https://api.spoonacular.com/recipes/complexSearch?query=${randomCat}&number=10&apiKey=${apiKey}`)
+        let data = await res.json()
+        if (data.results && data.results.length > 0) {
+          const randomMeal = data.results[Math.floor(Math.random() * Math.min(data.results.length, 10))]
+          this.recipeImage = randomMeal.image
+        }
+      } catch (e) {
+        console.error('获取食谱图片失败:', e)
+      } finally {
+        this.imageLoading = false
+      }
+    },
+    refreshImage() {
+      if (this.currentRecipe) {
+        this.fetchRecipeImage(this.currentRecipe.imageKeyword || this.currentRecipe.englishName || this.currentRecipe.name)
+      }
     },
     async deleteRecipe(id) {
       try {
@@ -395,6 +512,64 @@ export default {
   border-radius: 12px;
 }
 
+.recipe-header {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.recipe-image-section {
+  flex-shrink: 0;
+}
+
+.recipe-image {
+  width: 280px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  transition: opacity 0.3s ease;
+}
+
+.recipe-image[lazy="loaded"] {
+  opacity: 1;
+}
+
+.image-placeholder {
+  width: 280px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f8fafc, #eef4ff);
+  border-radius: 16px;
+  border: 2px dashed rgba(148,163,184,0.3);
+}
+
+.image-placeholder.loading {
+  background: linear-gradient(135deg, #f0f7ff, #e8f4ff);
+}
+
+.placeholder-icon {
+  font-size: 48px;
+}
+
+.placeholder-text {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.loading-text {
+  font-size: 14px;
+  color: var(--primary);
+}
+
+.recipe-info {
+  flex: 1;
+}
+
 .recipe-title {
   margin: 0 0 12px;
   font-size: 22px;
@@ -405,6 +580,29 @@ export default {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.recipe-tags {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.recipe-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.recipe-tag:hover {
+  background: rgba(37, 99, 235, 0.2);
 }
 
 .detail-steps .step-item {

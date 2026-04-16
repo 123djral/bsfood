@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS `food_material` (
 CREATE TABLE IF NOT EXISTS `recipe` (
     `id` INT(11) NOT NULL AUTO_INCREMENT COMMENT '食谱唯一标识',
     `name` VARCHAR(100) NOT NULL COMMENT '食谱名称',
+    `english_name` VARCHAR(200) DEFAULT NULL COMMENT '英文名称（用于图片搜索）',
+    `image_keyword` VARCHAR(200) DEFAULT NULL COMMENT '图片搜索关键词（Spoonacular优化）',
+    `image_url` VARCHAR(500) DEFAULT NULL COMMENT 'AI生成的食谱图片URL',
     `user_id` INT(11) NOT NULL COMMENT '关联用户',
     `cooking_time` INT(5) NOT NULL COMMENT '烹饪耗时（分钟）',
     `difficulty_level` VARCHAR(20) NOT NULL COMMENT '难度等级（简单/中等/困难）',

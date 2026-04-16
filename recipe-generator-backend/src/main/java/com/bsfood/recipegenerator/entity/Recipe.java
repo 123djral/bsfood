@@ -51,11 +51,26 @@ public class Recipe {
      * 收藏次数
      */
     private Integer collectCount;
-    
+
     /**
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 英文名称（用于图片搜索）
+     */
+    private String englishName;
+
+    /**
+     * 图片搜索关键词（AI优化，用于在Spoonacular等API搜索匹配图片）
+     */
+    private String imageKeyword;
+
+    /**
+     * AI生成的食谱图片URL
+     */
+    private String imageUrl;
 
     // Getter and Setter methods
     public Long getId() {
@@ -128,5 +143,29 @@ public class Recipe {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getEnglishName() {
+        return englishName;
+    }
+
+    public void setEnglishName(String englishName) {
+        this.englishName = englishName;
+    }
+
+    public String getImageKeyword() {
+        return imageKeyword;
+    }
+
+    public void setImageKeyword(String imageKeyword) {
+        this.imageKeyword = imageKeyword;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
