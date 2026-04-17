@@ -1,5 +1,6 @@
 package com.bsfood.recipegenerator.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bsfood.recipegenerator.entity.FoodMaterial;
 import com.bsfood.recipegenerator.entity.Nutrition;
 
@@ -79,4 +80,14 @@ public interface FoodService {
      * @return 替代食材列表
      */
     List<FoodMaterial> getSubstituteByName(String foodName, String foodType);
+
+    /**
+     * 分页搜索食材
+     * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
+     * @return 分页结果
+     */
+    IPage<FoodMaterial> searchFoods(Long userId, String keyword, int page, int size);
 }

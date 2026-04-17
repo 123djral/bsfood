@@ -50,14 +50,12 @@ const router = createRouter({
 })
 
 // 导航守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   if (!to.meta.public && !user) {
-    next('/login')
+    return '/login'
   } else if (to.path === '/admin' && user?.role !== 'ADMIN') {
-    next('/')
-  } else {
-    next()
+    return '/'
   }
 })
 

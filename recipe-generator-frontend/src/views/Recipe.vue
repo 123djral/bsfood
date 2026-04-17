@@ -10,8 +10,28 @@
     <el-card shadow="hover" class="form-card">
       <el-form :model="recipeForm" label-width="100px">
         <el-form-item label="选择食材">
-          <el-select v-model="recipeForm.foodIds" multiple placeholder="请选择食材" style="width: 100%;">
-            <el-option v-for="food in foodList" :key="food.id" :label="food.name + ' (' + food.quantity + 'g)'" :value="food.id"></el-option>
+          <el-select
+            v-model="recipeForm.foodIds"
+            multiple
+            filterable
+            placeholder="搜索并选择食材"
+            style="width: 100%;"
+            :filter-method="filterFoods"
+            @focus="showAllFoods"
+          >
+            <div class="food-select-dropdown">
+              <el-row :gutter="8">
+                <el-col :span="5" v-for="food in filteredFoodList" :key="food.id">
+                  <el-option
+                    :label="food.name + ' (' + food.quantity + 'g)'"
+                    :value="food.id"
+                    :style="{ width: '100%' }"
+                  >
+                    {{ food.name }} ({{ food.quantity }}g)
+                  </el-option>
+                </el-col>
+              </el-row>
+            </div>
           </el-select>
         </el-form-item>
         <el-form-item label="食谱数量">
@@ -65,6 +85,12 @@
         <h3 class="section-title">我的食谱</h3>
       </div>
       <el-card shadow="hover" class="table-card">
+        <div class="list-header">
+          <el-input v-model="recipeSearchKeyword" placeholder="搜索食谱名称" style="width: 200px;" clearable @clear="loadMyRecipes" @keyup.enter="loadMyRecipes">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-button type="primary" size="small" @click="loadMyRecipes">搜索</el-button>
+        </div>
         <el-table :data="myRecipes" style="width: 100%" v-loading="loadingMyRecipes">
           <el-table-column prop="name" label="食谱名称"></el-table-column>
           <el-table-column prop="cookingTime" label="烹饪时间(分钟)" width="130"></el-table-column>
@@ -76,10 +102,19 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          v-if="recipeTotalCount > 0"
+          layout="prev, pager, next"
+          :total="recipeTotalCount"
+          :page-size="recipePageSize"
+          v-model:current-page="recipeCurrentPage"
+          @current-change="handleRecipePageChange"
+          style="margin-top: 16px; text-align: right;"
+        />
       </el-card>
     </div>
 
-    <el-dialog v-model="detailVisible" title="食谱详情" width="800px">
+    <el-dialog v-model="detailVisible" title="食谱详情" width="900px">
       <div v-if="currentRecipe" class="dialog-content">
         <div class="recipe-header">
           <div class="recipe-image-section">
@@ -95,14 +130,42 @@
           <div class="recipe-info">
             <h2 class="recipe-title">{{ currentRecipe.name }}</h2>
             <div class="recipe-meta">
-              <el-tag type="warning">⏱ 约 {{ currentRecipe.cookingTime }} 分钟</el-tag>
-              <el-tag type="info">📊 {{ currentRecipe.difficultyLevel }}</el-tag>
+              <el-tag type="warning">⏱ {{ currentRecipe.cookingTime }} 分钟</el-tag>
+              <el-tag type="info">{{ currentRecipe.difficultyLevel }}</el-tag>
+              <el-tag type="success" v-if="currentRecipe.cuisineStyle">{{ currentRecipe.cuisineStyle }}</el-tag>
+              <el-tag type="warning" v-if="currentRecipe.flavorProfile">{{ currentRecipe.flavorProfile }}</el-tag>
+            </div>
+            <div class="recipe-meta" style="margin-top:8px;">
+              <el-tag type="info" v-if="currentRecipe.servings">👥 {{ currentRecipe.servings }}人份</el-tag>
+              <el-tag type="success" v-if="currentRecipe.nutritionBrief">🔥 {{ currentRecipe.nutritionBrief }}</el-tag>
+            </div>
+            <div class="suitable-crowd" v-if="currentRecipe.suitableCrowd">
+              <span class="crowd-label">适宜人群：</span>
+              <span class="crowd-text">{{ currentRecipe.suitableCrowd }}</span>
             </div>
             <div class="recipe-tags">
               <span class="recipe-tag" @click="refreshImage">
                 <span>🔄</span> 换一张
               </span>
             </div>
+          </div>
+        </div>
+        <el-divider></el-divider>
+        <div class="detail-section">
+          <h4>🥗 所需食材</h4>
+          <div class="ingredients-grid">
+            <div v-for="(ing, idx) in parsedIngredients" :key="idx" class="ingredient-item">
+              <span class="ing-name">{{ ing.name }}</span>
+              <span class="ing-quantity">{{ ing.quantity }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <h4>🔧 所需工具</h4>
+          <div class="tools-list">
+            <el-tag v-for="(tool, idx) in parsedTools" :key="idx" size="large" class="tool-tag">
+              {{ tool.name || tool }}
+            </el-tag>
           </div>
         </div>
         <el-divider></el-divider>
@@ -115,6 +178,10 @@
             </div>
           </div>
         </div>
+        <div v-if="currentRecipe.tips" class="tips-section">
+          <h4>💡 烹饪小贴士</h4>
+          <div class="tips-content">{{ currentRecipe.tips }}</div>
+        </div>
         <div class="dialog-actions">
           <el-button type="primary" @click="collectRecipe(currentRecipe.id)">收藏此食谱</el-button>
           <el-button type="success" @click="analyzeRecipeNutrition(currentRecipe.id)">营养分析</el-button>
@@ -125,10 +192,12 @@
 </template>
 
 <script>
+import { Search } from '@element-plus/icons-vue'
 import { foodApi, recipeApi, userApi } from '../api/index.js'
 
 export default {
   name: 'Recipe',
+  components: { Search },
   data() {
     return {
       recipeForm: {
@@ -136,6 +205,7 @@ export default {
         expectCount: 3
       },
       foodList: [],
+      filteredFoodList: [],
       recipes: [],
       myRecipes: [],
       generating: false,
@@ -144,7 +214,15 @@ export default {
       currentRecipe: null,
       userPreference: null,
       recipeImage: '',
-      imageLoading: false
+      imageLoading: false,
+      recipeSearchKeyword: '',
+      recipeCurrentPage: 1,
+      recipePageSize: 10,
+      recipeTotalCount: 0,
+      recipeIngredients: [],
+      recipeTools: [],
+      parsedIngredients: [],
+      parsedTools: []
     }
   },
   mounted() {
@@ -156,13 +234,26 @@ export default {
     async loadFoodList() {
       try {
         const userId = this.getCurrentUserId()
-        const res = await foodApi.list(userId)
+        const res = await foodApi.listAll(userId)
         if (res.code === 200) {
           this.foodList = res.data || []
+          this.filteredFoodList = this.foodList
         }
       } catch (e) {
         console.error('加载食材列表失败:', e)
       }
+    },
+    filterFoods(query) {
+      if (query) {
+        this.filteredFoodList = this.foodList.filter(food =>
+          food.name.toLowerCase().includes(query.toLowerCase())
+        )
+      } else {
+        this.filteredFoodList = this.foodList
+      }
+    },
+    showAllFoods() {
+      this.filteredFoodList = this.foodList
     },
     getCurrentUserId() {
       const userId = localStorage.getItem('userId')
@@ -182,15 +273,20 @@ export default {
       if (!userId) return
       this.loadingMyRecipes = true
       try {
-        const res = await recipeApi.list(userId)
+        const res = await recipeApi.list(userId, this.recipeSearchKeyword || null, this.recipeCurrentPage, this.recipePageSize)
         if (res.code === 200) {
           this.myRecipes = res.data || []
+          this.recipeTotalCount = res.total || 0
         }
       } catch (e) {
         console.error('加载食谱列表失败:', e)
       } finally {
         this.loadingMyRecipes = false
       }
+    },
+    handleRecipePageChange(page) {
+      this.recipeCurrentPage = page
+      this.loadMyRecipes()
     },
     async loadUserPreference() {
       const userId = this.getCurrentUserId()
@@ -285,6 +381,11 @@ export default {
     viewDetail(recipe) {
       this.currentRecipe = recipe
       this.detailVisible = true
+      this.recipeIngredients = this.parseRecipeIngredients(recipe.foodIds)
+      this.recipeTools = this.extractToolsFromSteps(recipe.steps)
+      // 解析AI生成的详细食材和工具
+      this.parsedIngredients = this.parseDetailedIngredients(recipe.ingredients)
+      this.parsedTools = this.parseDetailedTools(recipe.tools)
       // 优先使用已生成的AI图片
       if (recipe.imageUrl) {
         this.recipeImage = recipe.imageUrl
@@ -293,6 +394,52 @@ export default {
         // 调用后端生成MiniMax图片
         this.generateMiniMaxImage(recipe.id)
       }
+    },
+    parseRecipeIngredients(foodIdsStr) {
+      if (!foodIdsStr) return []
+      try {
+        const foodIds = JSON.parse(foodIdsStr)
+        if (!Array.isArray(foodIds)) return []
+        return this.foodList.filter(f => foodIds.includes(f.id))
+      } catch {
+        return []
+      }
+    },
+    parseDetailedIngredients(ingredientsStr) {
+      if (!ingredientsStr) return []
+      try {
+        const arr = JSON.parse(ingredientsStr)
+        if (Array.isArray(arr)) return arr
+        return []
+      } catch {
+        return []
+      }
+    },
+    parseDetailedTools(toolsStr) {
+      if (!toolsStr) return []
+      try {
+        const arr = JSON.parse(toolsStr)
+        if (Array.isArray(arr)) return arr
+        return []
+      } catch {
+        return []
+      }
+    },
+    extractToolsFromSteps(stepsText) {
+      if (!stepsText) return []
+      const toolsSet = new Set()
+      const toolsKeywords = [
+        '锅', '炒锅', '蒸锅', '电饭锅', '高压锅', '砂锅', '烤箱', '微波炉',
+        '刀', '砧板', '菜板', '碗', '盘', '碟', '勺', '铲', '漏勺',
+        '蒸笼', '蒸架', '筛子', '漏斗', '保鲜膜', '烤盘', '模具',
+        '榨汁机', '搅拌机', '料理机', '筷子', '叉子', '勺子'
+      ]
+      for (const tool of toolsKeywords) {
+        if (stepsText.includes(tool)) {
+          toolsSet.add(tool)
+        }
+      }
+      return Array.from(toolsSet)
     },
     async generateMiniMaxImage(recipeId) {
       this.imageLoading = true
@@ -427,6 +574,21 @@ export default {
 
 .recipe-grid {
   row-gap: 20px;
+}
+
+.list-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.food-select-dropdown {
+  padding: 8px;
+}
+
+.food-select-dropdown .el-select-dropdown__item {
+  height: 32px;
+  line-height: 32px;
 }
 
 .recipe-card {
@@ -634,6 +796,87 @@ export default {
   font-size: 15px;
   line-height: 1.7;
   color: var(--text-primary);
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.ingredients-list,
+.tools-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ingredient-tag,
+.tool-tag {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.ingredients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.ingredient-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f0f9eb;
+  border: 1px solid #c2e7b0;
+  border-radius: 10px;
+}
+
+.ing-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ing-quantity {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.suitable-crowd {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.crowd-label {
+  color: var(--text-muted);
+}
+
+.crowd-text {
+  color: var(--text-secondary);
+}
+
+.tips-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fff9e6, #fff3cd);
+  border: 1px solid #ffeaa7;
+  border-radius: 12px;
+}
+
+.tips-section h4 {
+  margin: 0 0 10px;
+  color: #d68910;
+}
+
+.tips-content {
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
 }
 
 .dialog-actions {

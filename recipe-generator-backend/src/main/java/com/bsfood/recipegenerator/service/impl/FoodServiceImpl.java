@@ -1,6 +1,8 @@
 package com.bsfood.recipegenerator.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bsfood.recipegenerator.entity.FoodMaterial;
 import com.bsfood.recipegenerator.entity.Nutrition;
 import com.bsfood.recipegenerator.mapper.FoodMaterialMapper;
@@ -138,5 +140,23 @@ public class FoodServiceImpl implements FoodService {
     @Override
     public List<FoodMaterial> getSubstituteByName(String foodName, String foodType) {
         return aiApiClient.recommendSubstitute(foodName, foodType);
+    }
+
+    @Override
+    public IPage<FoodMaterial> searchFoods(Long userId, String keyword, int page, int size) {
+        // 使用 MyBatis-Plus 的 selectPage 进行分页
+        Page<FoodMaterial> pageObj = new Page<>(page, size);
+
+        // 构建查询条件
+        QueryWrapper<FoodMaterial> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.like("name", keyword);
+        }
+        wrapper.orderByDesc("create_time");
+
+        // 执行分页查询
+        IPage<FoodMaterial> result = foodMaterialMapper.selectPage(pageObj, wrapper);
+        return result;
     }
 }

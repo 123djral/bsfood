@@ -1,5 +1,6 @@
 package com.bsfood.recipegenerator.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bsfood.recipegenerator.entity.Recipe;
 
 import java.util.List;
@@ -73,4 +74,24 @@ public interface RecipeService {
      * @return 收藏的食谱列表
      */
     List<Recipe> getCollectedRecipes(Long userId);
+
+    /**
+     * 分页搜索食谱
+     * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
+     * @return 分页结果
+     */
+    IPage<Recipe> searchRecipes(Long userId, String keyword, int page, int size);
+
+    /**
+     * 分页搜索收藏的食谱
+     * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
+     * @return 分页结果
+     */
+    IPage<Recipe> searchCollectedRecipes(Long userId, String keyword, int page, int size);
 }

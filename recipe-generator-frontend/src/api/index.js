@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 60000
+  timeout: 180000
 })
 
 // 请求拦截器 - 添加 JWT Token
@@ -37,7 +37,8 @@ export const userApi = {
 export const foodApi = {
   recognize: (text, image, type, userId) => api.post('/food/recognize', { text, image, type, userId }),
   save: (food, userId) => api.post('/food/save', { ...food, userId }),
-  list: (userId) => api.get('/food/list', { params: { userId } }),
+  list: (userId, keyword, page, size) => api.get('/food/list', { params: { userId, keyword, page, size } }),
+  listAll: (userId) => api.get('/food/all', { params: { userId } }),
   detail: (id, userId) => api.get('/food/detail', { params: { id, userId } }),
   update: (food, userId) => api.put('/food/update', { ...food, userId }),
   delete: (id, userId) => api.delete('/food/delete', { params: { id, userId } }),
@@ -50,13 +51,13 @@ export const foodApi = {
 export const recipeApi = {
   generate: (userId, foodIds, expectCount) => api.post(`/recipe/generate?userId=${userId}&foodIds=${foodIds.join(',')}&expectCount=${expectCount}`),
   save: (recipe, userId) => api.post('/recipe/save', { ...recipe, userId }),
-  list: (userId) => api.get('/recipe/list', { params: { userId } }),
+  list: (userId, keyword, page, size) => api.get('/recipe/list', { params: { userId, keyword, page, size } }),
   detail: (id, userId) => api.get('/recipe/detail', { params: { id, userId } }),
   update: (recipe, userId) => api.put('/recipe/update', { ...recipe, userId }),
   delete: (id, userId) => api.delete('/recipe/delete', { params: { id, userId } }),
   collect: (id) => api.post('/recipe/collect', null, { params: { id } }),
   collectPersonal: (recipeId, userId) => api.post('/recipe/collectPersonal', null, { params: { recipeId, userId } }),
-  collected: (userId) => api.get('/recipe/collected', { params: { userId } })
+  collected: (userId, keyword, page, size) => api.get('/recipe/collected', { params: { userId, keyword, page, size } })
 }
 
 // 营养相关

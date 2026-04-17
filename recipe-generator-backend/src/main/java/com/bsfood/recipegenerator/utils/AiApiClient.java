@@ -101,7 +101,7 @@ public class AiApiClient {
                 .uri(URI.create(baseUrl + "/chat/completions"))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(180))
                 .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                 .build();
 
@@ -129,7 +129,7 @@ public class AiApiClient {
      * 从AI返回的文本中提取JSON内容
      */
     private String extractJson(String text) {
-        System.out.println(">>> extractJson收到内容: " + (text != null && text.length() > 300 ? text.substring(0, 300) + "..." : text));
+        System.out.println(">>> extractJson收到内容: " + (text != null && text.length() > 500 ? text.substring(0, 500) + "..." : text));
         if (text == null || text.isEmpty()) {
             throw new RuntimeException("AI返回内容为空");
         }
@@ -138,34 +138,86 @@ public class AiApiClient {
             text = text.substring(1);
         }
         text = text.trim();
-        // AI可能返回markdown代码块包裹的JSON
+
+        // 0. 去除UTF-8 BOM
+        if (text.startsWith("\uFEFF")) {
+            text = text.substring(1);
+        }
+
+        // 1. AI可能返回markdown代码块包裹的JSON（优先检查）
         if (text.contains("```json")) {
             int start = text.indexOf("```json") + 7;
             int end = text.lastIndexOf("```");
             if (end > start) {
-                return text.substring(start, end).trim();
+                String extracted = text.substring(start, end).trim();
+                if (isValidJsonObject(extracted)) {
+                    return extracted;
+                }
+                if (isValidJsonArray(extracted)) {
+                    return extracted;
+                }
             }
         }
         if (text.contains("```")) {
             int start = text.indexOf("```") + 3;
             int end = text.lastIndexOf("```");
             if (end > start) {
-                return text.substring(start, end).trim();
+                String extracted = text.substring(start, end).trim();
+                if (isValidJsonObject(extracted)) {
+                    return extracted;
+                }
+                if (isValidJsonArray(extracted)) {
+                    return extracted;
+                }
             }
         }
-        // 尝试找到JSON数组或对象
-        int arrStart = text.indexOf('[');
+
+        // 2. 尝试找JSON对象（优先于数组，因为营养分析返回的是对象）
         int objStart = text.indexOf('{');
-        if (arrStart >= 0 && (objStart < 0 || arrStart < objStart)) {
-            int arrEnd = text.lastIndexOf(']');
-            if (arrEnd > arrStart) return text.substring(arrStart, arrEnd + 1);
-        }
         if (objStart >= 0) {
             int objEnd = text.lastIndexOf('}');
-            if (objEnd > objStart) return text.substring(objStart, objEnd + 1);
+            if (objEnd > objStart) {
+                String potentialJson = text.substring(objStart, objEnd + 1);
+                if (isValidJsonObject(potentialJson)) {
+                    return potentialJson;
+                }
+            }
         }
+
+        // 3. 尝试找JSON数组
+        int arrStart = text.indexOf('[');
+        if (arrStart >= 0) {
+            int arrEnd = text.lastIndexOf(']');
+            if (arrEnd > arrStart) {
+                String potentialJson = text.substring(arrStart, arrEnd + 1);
+                if (isValidJsonArray(potentialJson)) {
+                    return potentialJson;
+                }
+            }
+        }
+
         // 没有找到任何JSON结构
         throw new RuntimeException("AI返回内容不是JSON格式，内容为：" + text);
+    }
+
+    private boolean isValidJsonArray(String text) {
+        if (text == null || text.trim().isEmpty()) return false;
+        try {
+            JSON.parseArray(text);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isValidJsonObject(String text) {
+        if (text == null || text.trim().isEmpty()) return false;
+        try {
+            JSON.parseObject(text);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -268,7 +320,7 @@ public class AiApiClient {
                 .uri(URI.create(targetBaseUrl + "/chat/completions"))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + dashscopeApiKey)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(180))
                 .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                 .build();
 
@@ -333,7 +385,7 @@ public class AiApiClient {
                 .uri(URI.create(baseUrl + "/image_understand"))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(180))
                 .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                 .build();
 
@@ -365,15 +417,26 @@ public class AiApiClient {
                                        String difficultyLevel, String tastePreference, String cookingLevel, Integer maxCookingTime,
                                        String dietLimit, String healthGoal) {
         StringBuilder systemPrompt = new StringBuilder();
-        systemPrompt.append("你是一个专业厨师和食谱设计师。根据用户提供的食材，生成个性化食谱。");
+        systemPrompt.append("你是一个专业厨师和食谱设计师。根据用户提供的食材，生成详细的个性化食谱。");
         systemPrompt.append("你可以在用户提供的食材基础上自动补充常见调味料和辅料。");
-        systemPrompt.append("请以JSON数组格式返回，每个食谱包含：name(中文食谱名称)、englishName(英文食谱名称，必须是真实存在的英文菜名)、imageKeyword(图片搜索关键词，用于在Spoonacular图片API搜索，要求是简洁的英文关键词如'kung pao chicken'或'egg fried rice'，必须是Spoonacular数据库中存在的菜谱关键词)、cookingTime(烹饪时间分钟数)、difficultyLevel(难度：简单/中等/困难)、steps(详细烹饪步骤，字符串，每步用序号开头)、foodIds(使用的食材名称列表，字符串)。");
-        systemPrompt.append("重要提示：imageKeyword必须是非常简洁的1-3个单词组合，是Spoonacular等图片API中最可能匹配到的搜索词，例如'kung pao chicken'、'egg fried rice'、'tomato egg stir-fry'、'honey garlic salmon'、'mapo tofu'、'steamed fish'等。请根据中文菜名生成最可能被图片API识别的英文关键词。");
+        systemPrompt.append("请以JSON数组格式返回，每个食谱包含非常详细的信息：");
+        systemPrompt.append("name(中文食谱名称)、englishName(英文食谱名称)、imageKeyword(图片搜索关键词，简洁英文如'kung pao chicken')、");
+        systemPrompt.append("cookingTime(烹饪时间分钟数)、difficultyLevel(难度：简单/中等/困难)、servings(几人份，人数)、");
+        systemPrompt.append("cuisineStyle(菜系，如川菜、粤菜、湘菜、鲁菜、苏菜、浙菜、闽菜、徽菜、家常菜等)、");
+        systemPrompt.append("flavorProfile(口味特点，如麻辣、鲜香、咸鲜、甜酸、清淡等)、");
+        systemPrompt.append("suitableCrowd(适宜人群，如上班族、儿童、老年人、孕妇、减肥人群等)、");
+        systemPrompt.append("ingredients(详细食材列表，JSON数组，每个元素包含name食材名称和quantity用量，如{name:\"鸡腿肉\",quantity:\"200g\"})、");
+        systemPrompt.append("tools(所需厨具工具列表，JSON数组，如{name:\"炒锅\"}、{name:\"砧板\"}等)、");
+        systemPrompt.append("steps(非常详细的烹饪步骤，字符串，每步用序号开头，每步要说明具体操作和火候/时间)、");
+        systemPrompt.append("tips(烹饪小贴士，字符串，分享让菜品更好吃的技巧)、");
+        systemPrompt.append("nutritionBrief(简要营养信息，每100g的热量大卡数和主要营养特点描述)、");
+        systemPrompt.append("foodIds(使用的食材名称列表，字符串，逗号分隔，用于系统关联)。");
+        systemPrompt.append("重要：steps步骤必须非常详细，每步至少30字以上，包含具体的食材处理、刀工、火候、调味等细节；tips至少包含2-3条实用技巧；ingredients要列出所有用到的食材及用量。");
         systemPrompt.append("只返回JSON数组，不要其他文字。");
 
         StringBuilder userPrompt = new StringBuilder();
         userPrompt.append("现有食材：").append(String.join("、", foodNames)).append("\n");
-        userPrompt.append("请生成").append(expectCount).append("个食谱。\n");
+        userPrompt.append("请生成").append(expectCount).append("个详细食谱。\n");
 
         // 添加健康目标
         if (healthGoal != null && !healthGoal.isEmpty()) {
@@ -406,11 +469,43 @@ public class AiApiClient {
      * 分析营养成分
      */
     public String analyzeNutrition(String recipeName, String recipeSteps, List<String> foodNames) {
-        String systemPrompt = "你是一个营养学专家，精通《中国居民膳食指南》。请分析食谱的营养成分并给出评估。" +
-                "请以JSON格式返回，包含：" +
-                "nutritionData(对象，含calorie热量大卡、protein蛋白质g、fat脂肪g、carbohydrate碳水g、vitamin维生素描述、mineral矿物质描述)、" +
-                "evaluation(营养评估文字，参考中国居民膳食指南)、" +
-                "suggestion(改善建议文字)。" +
+        String systemPrompt = "你是一个资深营养学专家，精通《中国居民膳食指南》和中式烹饪营养学。请对这个食谱进行非常详细的营养分析。" +
+                "请以JSON格式返回，包含以下详细信息：" +
+                "1. nutritionData(详细营养成分对象)：\n" +
+                "   - calorie(总热量大卡)\n" +
+                "   - caloriePerHundred(每100克热量大卡)\n" +
+                "   - protein(蛋白质g)\n" +
+                "   - fat(脂肪g)\n" +
+                "   - saturatedFat(饱和脂肪酸g)\n" +
+                "   - unsaturatedFat(不饱和脂肪酸g)\n" +
+                "   - carbohydrate(碳水化合物g)\n" +
+                "   - dietaryFiber(膳食纤维g)\n" +
+                "   - sodium(钠mg)\n" +
+                "   - cholesterol(胆固醇mg)\n" +
+                "   - vitaminA(维生素A微克)\n" +
+                "   - vitaminC(维生素C毫克)\n" +
+                "   - vitaminE(维生素E毫克)\n" +
+                "   - calcium(钙mg)\n" +
+                "   - iron(铁mg)\n" +
+                "   - zinc(锌mg)\n" +
+                "   - selenium(硒微克)\n" +
+                "2. dailyValuePercentages(每日推荐值百分比对象，对应成人每日所需)：\n" +
+                "   - caloriePct(热量百分比，如15表示占每日推荐的15%)\n" +
+                "   - proteinPct(蛋白质百分比)\n" +
+                "   - fatPct(脂肪百分比)\n" +
+                "   - carbohydratePct(碳水百分比)\n" +
+                "   - sodiumPct(钠百分比)\n" +
+                "   - fiberPct(膳食纤维百分比)\n" +
+                "3. nutritionBalance(营养均衡性评估对象)：\n" +
+                "   - macroBalance(宏量营养素均衡评分0-100，评估蛋白质/脂肪/碳水比例是否合理)\n" +
+                "   - microBalance(微量营养素均衡评分0-100，评估维生素矿物质丰富度)\n" +
+                "   - sodiumLevel(钠含量水平：低/中/高)\n" +
+                "   - overallScore(综合营养评分0-100)\n" +
+                "4. evaluation(详细营养评估，300字以上，基于中国居民膳食指南进行评估，包含：总热量是否合适、宏量营养素比例是否合理、微量营养素是否丰富、是否符合食物多样性原则、是否适合目标人群)\n" +
+                "5. suggestion(详细改善建议，200字以上，包含：如何优化这道菜的营养、可以替换哪些食材更健康、烹饪方式有什么改进建议、适合搭配什么其他菜肴达到膳食平衡、特殊人群如老人儿童孕妇的调整建议)\n" +
+                "6. suitableCrowd(适宜人群数组，如[\"健康人群\",\"上班族\",\"贫血人群\"])\n" +
+                "7. contraindications(禁忌人群数组，如[\"痛风患者\",\"海鲜过敏者\",\"肾病患者\"])\n" +
+                "8. mealAdvice(膳食搭配建议，字符串，150字以上，建议这道菜适合与什么主食、其他菜肴、果蔬搭配，形成完整的一餐)\n" +
                 "只返回JSON对象，不要其他文字。";
 
         String userPrompt = "食谱名称：" + recipeName + "\n" +
@@ -541,6 +636,20 @@ public class AiApiClient {
                     recipe.setSteps(obj.containsKey("steps") && obj.getString("steps") != null ? obj.getString("steps") : "");
                     recipe.setFoodIds(obj.containsKey("foodIds") && obj.getString("foodIds") != null ? obj.getString("foodIds") : "");
                     recipe.setCollectCount(0);
+                    // 新增详细字段
+                    recipe.setServings(obj.containsKey("servings") && obj.get("servings") != null ? obj.getInteger("servings") : 2);
+                    recipe.setCuisineStyle(obj.containsKey("cuisineStyle") && obj.getString("cuisineStyle") != null ? obj.getString("cuisineStyle") : "家常菜");
+                    recipe.setFlavorProfile(obj.containsKey("flavorProfile") && obj.getString("flavorProfile") != null ? obj.getString("flavorProfile") : "");
+                    recipe.setSuitableCrowd(obj.containsKey("suitableCrowd") && obj.get("suitableCrowd") != null ? obj.getString("suitableCrowd") : "");
+                    // ingredients和tools转为JSON字符串存储
+                    if (obj.containsKey("ingredients") && obj.get("ingredients") != null) {
+                        recipe.setIngredients(obj.getJSONArray("ingredients").toJSONString());
+                    }
+                    if (obj.containsKey("tools") && obj.get("tools") != null) {
+                        recipe.setTools(obj.getJSONArray("tools").toJSONString());
+                    }
+                    recipe.setTips(obj.containsKey("tips") && obj.getString("tips") != null ? obj.getString("tips") : "");
+                    recipe.setNutritionBrief(obj.containsKey("nutritionBrief") && obj.getString("nutritionBrief") != null ? obj.getString("nutritionBrief") : "");
                     recipeList.add(recipe);
                 } catch (Exception e) {
                     System.out.println(">>> 解析单个食谱失败，跳过: " + e.getMessage());
@@ -566,6 +675,18 @@ public class AiApiClient {
                             recipe.setSteps(obj.containsKey("steps") && obj.getString("steps") != null ? obj.getString("steps") : "");
                             recipe.setFoodIds(obj.containsKey("foodIds") && obj.getString("foodIds") != null ? obj.getString("foodIds") : "");
                             recipe.setCollectCount(0);
+                            recipe.setServings(obj.containsKey("servings") && obj.get("servings") != null ? obj.getInteger("servings") : 2);
+                            recipe.setCuisineStyle(obj.containsKey("cuisineStyle") && obj.getString("cuisineStyle") != null ? obj.getString("cuisineStyle") : "家常菜");
+                            recipe.setFlavorProfile(obj.containsKey("flavorProfile") && obj.getString("flavorProfile") != null ? obj.getString("flavorProfile") : "");
+                            recipe.setSuitableCrowd(obj.containsKey("suitableCrowd") && obj.get("suitableCrowd") != null ? obj.getString("suitableCrowd") : "");
+                            if (obj.containsKey("ingredients") && obj.get("ingredients") != null) {
+                                recipe.setIngredients(obj.getJSONArray("ingredients").toJSONString());
+                            }
+                            if (obj.containsKey("tools") && obj.get("tools") != null) {
+                                recipe.setTools(obj.getJSONArray("tools").toJSONString());
+                            }
+                            recipe.setTips(obj.containsKey("tips") && obj.getString("tips") != null ? obj.getString("tips") : "");
+                            recipe.setNutritionBrief(obj.containsKey("nutritionBrief") && obj.getString("nutritionBrief") != null ? obj.getString("nutritionBrief") : "");
                             recipeList.add(recipe);
                         } catch (Exception ex) {
                             continue;
@@ -591,24 +712,86 @@ public class AiApiClient {
         if (json == null || json.trim().isEmpty()) {
             return null;
         }
-        // 如果不是以 [ 开头，尝试找到第一个 [
-        if (!json.trim().startsWith("[")) {
-            int idx = json.indexOf('[');
-            if (idx >= 0) {
-                json = json.substring(idx);
+
+        // 找到JSON数组的开始和结束位置
+        int startIdx = -1;
+        int endIdx = -1;
+
+        // 从后往前找 ] 确保找到的是最后一个数组的结束
+        for (int i = json.length() - 1; i >= 0; i--) {
+            if (json.charAt(i) == ']') {
+                endIdx = i;
+                break;
             }
         }
-        // 尝试补全JSON数组
-        int lastClose = json.lastIndexOf(']');
-        if (lastClose < json.length() - 1) {
-            json = json.substring(0, lastClose + 1);
+
+        // 从找到的结束位置往前找对应的 [
+        if (endIdx > 0) {
+            int bracketCount = 0;
+            for (int i = endIdx; i >= 0; i--) {
+                if (json.charAt(i) == ']') {
+                    bracketCount++;
+                } else if (json.charAt(i) == '[') {
+                    bracketCount--;
+                    if (bracketCount == 0) {
+                        startIdx = i;
+                        break;
+                    }
+                }
+            }
         }
-        // 验证是否可以被解析
-        try {
-            JSON.parseArray(json);
-            return json;
-        } catch (Exception e) {
-            return null;
+
+        if (startIdx >= 0 && endIdx > startIdx) {
+            String extracted = json.substring(startIdx, endIdx + 1);
+            try {
+                JSON.parseArray(extracted);
+                return extracted;
+            } catch (Exception e) {
+                // 尝试修复常见的JSON问题
+                String fixed = fixJsonString(extracted);
+                try {
+                    JSON.parseArray(fixed);
+                    return fixed;
+                } catch (Exception ex) {
+                    return null;
+                }
+            }
         }
+
+        return null;
+    }
+
+    /**
+     * 修复常见的JSON字符串问题
+     */
+    private String fixJsonString(String json) {
+        if (json == null || json.isEmpty()) return json;
+
+        StringBuilder sb = new StringBuilder();
+        boolean inString = false;
+        char prevChar = 0;
+
+        for (int i = 0; i < json.length(); i++) {
+            char c = json.charAt(i);
+
+            if (c == '"' && prevChar != '\\') {
+                inString = !inString;
+                sb.append(c);
+            } else if (inString) {
+                sb.append(c);
+            } else if (c == '\'' ) {
+                // 单引号改为双引号（常见错误）
+                sb.append('"');
+            } else if (c == '\n' || c == '\r' || c == '\t') {
+                // 保留换行符在字符串内的情况
+                sb.append(c);
+            } else {
+                sb.append(c);
+            }
+
+            prevChar = c;
+        }
+
+        return sb.toString();
     }
 }

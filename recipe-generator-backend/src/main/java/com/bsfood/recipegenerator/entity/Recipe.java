@@ -72,6 +72,46 @@ public class Recipe {
      */
     private String imageUrl;
 
+    /**
+     * 详细食材列表（JSON字符串，每个元素包含name和quantity）
+     */
+    private String ingredients;
+
+    /**
+     * 所需厨具工具列表（JSON字符串）
+     */
+    private String tools;
+
+    /**
+     * 烹饪小贴士
+     */
+    private String tips;
+
+    /**
+     * 适宜人群
+     */
+    private String suitableCrowd;
+
+    /**
+     * 菜系
+     */
+    private String cuisineStyle;
+
+    /**
+     * 口味特点
+     */
+    private String flavorProfile;
+
+    /**
+     * 几人份
+     */
+    private Integer servings;
+
+    /**
+     * 简要营养信息
+     */
+    private String nutritionBrief;
+
     // Getter and Setter methods
     public Long getId() {
         return id;
@@ -167,5 +207,69 @@ public class Recipe {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getIngredients() {
+        return ingredients;
+    }
+
+    public void setIngredients(String ingredients) {
+        this.ingredients = ingredients;
+    }
+
+    public String getTools() {
+        return tools;
+    }
+
+    public void setTools(String tools) {
+        this.tools = tools;
+    }
+
+    public String getTips() {
+        return tips;
+    }
+
+    public void setTips(String tips) {
+        this.tips = tips;
+    }
+
+    public String getSuitableCrowd() {
+        return suitableCrowd;
+    }
+
+    public void setSuitableCrowd(String suitableCrowd) {
+        this.suitableCrowd = suitableCrowd;
+    }
+
+    public String getCuisineStyle() {
+        return cuisineStyle;
+    }
+
+    public void setCuisineStyle(String cuisineStyle) {
+        this.cuisineStyle = cuisineStyle;
+    }
+
+    public String getFlavorProfile() {
+        return flavorProfile;
+    }
+
+    public void setFlavorProfile(String flavorProfile) {
+        this.flavorProfile = flavorProfile;
+    }
+
+    public Integer getServings() {
+        return servings;
+    }
+
+    public void setServings(Integer servings) {
+        this.servings = servings;
+    }
+
+    public String getNutritionBrief() {
+        return nutritionBrief;
+    }
+
+    public void setNutritionBrief(String nutritionBrief) {
+        this.nutritionBrief = nutritionBrief;
     }
 }

@@ -1,5 +1,6 @@
 package com.bsfood.recipegenerator.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bsfood.recipegenerator.entity.Recipe;
 import com.bsfood.recipegenerator.service.RecipeService;
 import com.bsfood.recipegenerator.utils.AiApiClient;
@@ -68,15 +69,33 @@ public class RecipeController {
     /**
      * 获取食谱列表
      * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
      * @return 食谱列表
      */
     @GetMapping("/list")
-    public Map<String, Object> getList(@RequestParam Long userId) {
+    public Map<String, Object> getList(@RequestParam Long userId,
+                                       @RequestParam(required = false) String keyword,
+                                       @RequestParam(required = false) Integer page,
+                                       @RequestParam(required = false) Integer size) {
         Map<String, Object> result = new HashMap<>();
-        List<Recipe> recipeList = recipeService.getRecipeList(userId);
+        int pageNum = (page != null && page > 0) ? page : 1;
+        int pageSize = (size != null && size > 0) ? size : 10;
+
+        IPage<Recipe> pageResult;
+        if (keyword != null && !keyword.isEmpty()) {
+            pageResult = recipeService.searchRecipes(userId, keyword, pageNum, pageSize);
+        } else {
+            pageResult = recipeService.searchRecipes(userId, null, pageNum, pageSize);
+        }
         result.put("code", 200);
         result.put("message", "获取成功");
-        result.put("data", recipeList);
+        result.put("data", pageResult.getRecords());
+        result.put("total", pageResult.getTotal());
+        result.put("page", pageResult.getCurrent());
+        result.put("size", pageResult.getSize());
+        result.put("pages", pageResult.getPages());
         return result;
     }
     
@@ -170,15 +189,33 @@ public class RecipeController {
     /**
      * 获取用户收藏的食谱列表
      * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
      * @return 收藏的食谱列表
      */
     @GetMapping("/collected")
-    public Map<String, Object> getCollectedRecipes(@RequestParam Long userId) {
+    public Map<String, Object> getCollectedRecipes(@RequestParam Long userId,
+                                                   @RequestParam(required = false) String keyword,
+                                                   @RequestParam(required = false) Integer page,
+                                                   @RequestParam(required = false) Integer size) {
         Map<String, Object> result = new HashMap<>();
-        List<Recipe> recipes = recipeService.getCollectedRecipes(userId);
+        int pageNum = (page != null && page > 0) ? page : 1;
+        int pageSize = (size != null && size > 0) ? size : 10;
+
+        IPage<Recipe> pageResult;
+        if (keyword != null && !keyword.isEmpty()) {
+            pageResult = recipeService.searchCollectedRecipes(userId, keyword, pageNum, pageSize);
+        } else {
+            pageResult = recipeService.searchCollectedRecipes(userId, null, pageNum, pageSize);
+        }
         result.put("code", 200);
         result.put("message", "获取成功");
-        result.put("data", recipes);
+        result.put("data", pageResult.getRecords());
+        result.put("total", pageResult.getTotal());
+        result.put("page", pageResult.getCurrent());
+        result.put("size", pageResult.getSize());
+        result.put("pages", pageResult.getPages());
         return result;
     }
 

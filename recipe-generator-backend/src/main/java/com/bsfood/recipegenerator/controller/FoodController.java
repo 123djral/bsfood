@@ -1,5 +1,6 @@
 package com.bsfood.recipegenerator.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bsfood.recipegenerator.entity.FoodMaterial;
 import com.bsfood.recipegenerator.entity.Nutrition;
 import com.bsfood.recipegenerator.service.FoodService;
@@ -73,12 +74,45 @@ public class FoodController {
     }
 
     /**
-     * 获取食材列表
+     * 获取食材列表（分页）
      * @param userId 用户ID
+     * @param keyword 搜索关键词
+     * @param page 页码
+     * @param size 每页大小
      * @return 食材列表
      */
     @GetMapping("/list")
-    public Map<String, Object> getList(@RequestParam(required = false) Long userId) {
+    public Map<String, Object> getList(@RequestParam(required = false) Long userId,
+                                       @RequestParam(required = false) String keyword,
+                                       @RequestParam(required = false) Integer page,
+                                       @RequestParam(required = false) Integer size) {
+        Map<String, Object> result = new HashMap<>();
+        int pageNum = (page != null && page > 0) ? page : 1;
+        int pageSize = (size != null && size > 0) ? size : 10;
+
+        IPage<FoodMaterial> pageResult;
+        if (keyword != null && !keyword.isEmpty()) {
+            pageResult = foodService.searchFoods(userId, keyword, pageNum, pageSize);
+        } else {
+            pageResult = foodService.searchFoods(userId, null, pageNum, pageSize);
+        }
+        result.put("code", 200);
+        result.put("message", "获取成功");
+        result.put("data", pageResult.getRecords());
+        result.put("total", pageResult.getTotal());
+        result.put("page", pageResult.getCurrent());
+        result.put("size", pageResult.getSize());
+        result.put("pages", pageResult.getPages());
+        return result;
+    }
+
+    /**
+     * 获取用户所有食材（不分页，用于食谱生成选择食材）
+     * @param userId 用户ID
+     * @return 所有食材列表
+     */
+    @GetMapping("/all")
+    public Map<String, Object> getAllFoods(@RequestParam Long userId) {
         Map<String, Object> result = new HashMap<>();
         List<FoodMaterial> foodList = foodService.getFoodList(userId);
         result.put("code", 200);

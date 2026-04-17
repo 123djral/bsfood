@@ -1,6 +1,8 @@
 package com.bsfood.recipegenerator.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bsfood.recipegenerator.entity.FoodMaterial;
 import com.bsfood.recipegenerator.entity.Recipe;
 import com.bsfood.recipegenerator.entity.UserCollection;
@@ -168,5 +170,56 @@ public class RecipeServiceImpl implements RecipeService {
         }
         List<Long> recipeIds = collections.stream().map(UserCollection::getRecipeId).collect(Collectors.toList());
         return recipeMapper.selectBatchIds(recipeIds);
+    }
+
+    @Override
+    public IPage<Recipe> searchRecipes(Long userId, String keyword, int page, int size) {
+        // 使用 MyBatis-Plus 的 selectPage 进行分页
+        Page<Recipe> pageObj = new Page<>(page, size);
+
+        // 构建查询条件
+        QueryWrapper<Recipe> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.like("name", keyword);
+        }
+        wrapper.orderByDesc("create_time");
+
+        // 执行分页查询
+        IPage<Recipe> result = recipeMapper.selectPage(pageObj, wrapper);
+        return result;
+    }
+
+    @Override
+    public IPage<Recipe> searchCollectedRecipes(Long userId, String keyword, int page, int size) {
+        // 先获取用户收藏的所有食谱ID
+        QueryWrapper<UserCollection> collWrapper = new QueryWrapper<>();
+        collWrapper.eq("user_id", userId);
+        collWrapper.orderByDesc("create_time");
+        List<UserCollection> collections = userCollectionMapper.selectList(collWrapper);
+
+        if (collections.isEmpty()) {
+            Page<Recipe> emptyPage = new Page<>(page, size);
+            emptyPage.setTotal(0L);
+            emptyPage.setRecords(new ArrayList<>());
+            return emptyPage;
+        }
+
+        List<Long> recipeIds = collections.stream().map(UserCollection::getRecipeId).collect(Collectors.toList());
+
+        // 使用 MyBatis-Plus 的 selectPage 进行分页
+        Page<Recipe> pageObj = new Page<>(page, size);
+
+        // 构建食谱查询
+        QueryWrapper<Recipe> wrapper = new QueryWrapper<>();
+        wrapper.in("id", recipeIds);
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.like("name", keyword);
+        }
+        wrapper.orderByDesc("create_time");
+
+        // 执行分页查询
+        IPage<Recipe> result = recipeMapper.selectPage(pageObj, wrapper);
+        return result;
     }
 }

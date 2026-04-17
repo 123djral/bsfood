@@ -79,7 +79,10 @@
 
           <el-tab-pane label="食材列表" name="list">
             <div class="list-header">
-              <el-button type="primary" size="small" @click="loadFoodList" class="refresh-button">刷新列表</el-button>
+              <el-input v-model="searchKeyword" placeholder="搜索食材名称" style="width: 200px;" clearable @clear="loadFoodList" @keyup.enter="loadFoodList">
+                <template #prefix><el-icon><Search /></el-icon></template>
+              </el-input>
+              <el-button type="primary" size="small" @click="loadFoodList" class="refresh-button">搜索</el-button>
               <el-button type="danger" size="small" @click="deleteSelectedFoods" :disabled="selectedFoods.length === 0">
                 删除选中 ({{ selectedFoods.length }})
               </el-button>
@@ -104,6 +107,15 @@
                 </template>
               </el-table-column>
             </el-table>
+            <el-pagination
+              v-if="totalCount > 0"
+              layout="prev, pager, next"
+              :total="totalCount"
+              :page-size="pageSize"
+              v-model:current-page="currentPage"
+              @current-change="handlePageChange"
+              style="margin-top: 16px; text-align: right;"
+            />
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -146,6 +158,7 @@
 
 <script>
 import { UploadFilled } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 import { foodApi } from '../api/index.js'
 
 const INVALID_INGREDIENT_NAMES = ['食材', '配料', '原料', '材料', '图片', '照片', '盘子', '碗', '桌子', '厨房', '背景']
@@ -153,7 +166,8 @@ const INVALID_INGREDIENT_NAMES = ['食材', '配料', '原料', '材料', '图�
 export default {
   name: 'Food',
   components: {
-    UploadFilled
+    UploadFilled,
+    Search
   },
   data() {
     return {
@@ -173,7 +187,11 @@ export default {
       replaceDialogVisible: false,
       substituteOriginal: null,
       substituteIndex: null,
-      customReplaceName: ''
+      customReplaceName: '',
+      searchKeyword: '',
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: 0
     }
   },
   computed: {
@@ -349,15 +367,20 @@ export default {
       this.listLoading = true
       try {
         const userId = this.getCurrentUserId()
-        const res = await foodApi.list(userId)
+        const res = await foodApi.list(userId, this.searchKeyword || null, this.currentPage, this.pageSize)
         if (res.code === 200) {
           this.foodList = res.data
+          this.totalCount = res.total || 0
         }
       } catch (e) {
         console.error('加载食材列表失败:', e)
       } finally {
         this.listLoading = false
       }
+    },
+    handlePageChange(page) {
+      this.currentPage = page
+      this.loadFoodList()
     },
     getCurrentUserId() {
       // 优先从 localStorage 获取 userId
