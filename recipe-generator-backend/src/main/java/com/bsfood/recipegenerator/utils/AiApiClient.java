@@ -139,10 +139,9 @@ public class AiApiClient {
         }
         text = text.trim();
 
-        // 0. 去除UTF-8 BOM
-        if (text.startsWith("\uFEFF")) {
-            text = text.substring(1);
-        }
+        // 去除AI思考标签 <think>...</think> 或 <think>...</think>
+        text = text.replaceAll("<think>[\\s\\S]*?</think>", "");
+        text = text.replaceAll("<think>[\\s\\S]*?</think>", "");
 
         // 1. AI可能返回markdown代码块包裹的JSON（优先检查）
         if (text.contains("```json")) {
@@ -623,6 +622,13 @@ public class AiApiClient {
                     JSONObject obj = arr.getJSONObject(i);
                     Recipe recipe = new Recipe();
                     recipe.setName(obj.getString("name"));
+                    // 验证是否为有效食谱：必须有详细步骤或食材列表
+                    String steps = obj.containsKey("steps") && obj.getString("steps") != null ? obj.getString("steps") : "";
+                    String ingredients = obj.containsKey("ingredients") && obj.get("ingredients") != null ? obj.getJSONArray("ingredients").toJSONString() : "";
+                    if (steps == null || steps.trim().isEmpty() || ingredients == null || "[]".equals(ingredients)) {
+                        System.out.println(">>> 跳过无效食谱条目: " + obj.getString("name") + " (缺少步骤或食材)");
+                        continue;
+                    }
                     recipe.setEnglishName(obj.containsKey("englishName") && obj.getString("englishName") != null ? obj.getString("englishName") : obj.getString("name"));
                     // imageKeyword用于Spoonacular图片搜索，优先级最高
                     if (obj.containsKey("imageKeyword") && obj.getString("imageKeyword") != null && !obj.getString("imageKeyword").isEmpty()) {
