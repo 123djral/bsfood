@@ -22,6 +22,7 @@
             <el-menu-item index="/food">食材管理</el-menu-item>
             <el-menu-item index="/recipe">食谱生成</el-menu-item>
             <el-menu-item index="/nutrition">营养分析</el-menu-item>
+            <el-menu-item index="/search">食谱搜索</el-menu-item>
             <el-menu-item index="/collection">我的收藏</el-menu-item>
             <el-menu-item index="/user">个人中心</el-menu-item>
             <el-menu-item v-if="isAdmin" index="/admin">管理后台</el-menu-item>

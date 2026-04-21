@@ -222,4 +222,28 @@ public class RecipeServiceImpl implements RecipeService {
         IPage<Recipe> result = recipeMapper.selectPage(pageObj, wrapper);
         return result;
     }
+
+    @Override
+    public java.util.Map<String, Object> queryRecipeByName(String recipeName) {
+        // 1. 查询食谱详情
+        java.util.Map<String, Object> recipeInfo = aiApiClient.queryRecipeByName(recipeName);
+
+        // 2. 获取食材列表和步骤
+        List<String> ingredients = (List<String>) recipeInfo.get("ingredients");
+        String steps = (String) recipeInfo.get("steps");
+
+        // 3. 从食材字符串中提取食材名称（去掉用量）
+        List<String> foodNames = ingredients.stream()
+                .map(ing -> ing.replaceAll("\\s+\\d+.*$", ""))
+                .collect(Collectors.toList());
+
+        // 4. 查询营养分析
+        String nutritionJson = aiApiClient.analyzeNutrition(recipeName, steps, foodNames);
+        com.alibaba.fastjson.JSONObject nutritionData = com.alibaba.fastjson.JSON.parseObject(nutritionJson);
+
+        // 5. 合并结果
+        java.util.Map<String, Object> result = new java.util.HashMap<>(recipeInfo);
+        result.put("nutritionData", nutritionData);
+        return result;
+    }
 }

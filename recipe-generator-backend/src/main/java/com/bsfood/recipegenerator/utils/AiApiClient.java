@@ -511,16 +511,52 @@ public class AiApiClient {
                 "使用食材：" + String.join("、", foodNames) + "\n" +
                 "烹饪步骤：" + recipeSteps;
 
-        String aiResponse = callAiApi(systemPrompt, userPrompt);
+String aiResponse = callAiApi(systemPrompt, userPrompt);
         return extractJson(aiResponse);
     }
 
     /**
+     * 根据食谱名称查询完整食谱信息（食材、厨具、烹饪步骤）
+     * @param recipeName 食谱名称
+     * @return 包含ingredients(List<String>)、tools(List<String>)、steps(String)的Map
+     */
+    public java.util.Map<String, Object> queryRecipeByName(String recipeName) {
+        String systemPrompt = "你是一个资深中式烹饪专家。请根据用户输入的食谱名称，查询并返回该食谱的完整信息。" +
+                "请以JSON对象格式返回，包含以下字段：" +
+                "1. name(食谱名称，与输入一致)" +
+                "2. englishName(英文名称，可选)" +
+                "3. ingredients(食材列表，JSON数组，每个元素为\"食材名 用量\"，如[\"五花肉 500g\", \"冰糖 30g\"])" +
+                "4. tools(厨具列表，JSON数组，如[\"炒锅\", \"蒸锅\"])" +
+                "5. steps(烹饪步骤，字符串，用数字序号分隔每一步，如\"1. 五花肉切块焯水。2. 炒糖色。3. ...\")" +
+                "6. cookingTime(预估烹饪时间，单位分钟)" +
+                "7. difficultyLevel(难度等级：简单/中等/困难)" +
+                "8. cuisineStyle(菜系，如川菜、粤菜等)" +
+                "9. flavorProfile(口味描述)" +
+                "10. suitableCrowd(适宜人群数组)" +
+                "只返回JSON对象，不要其他文字。";
+
+        String userPrompt = "请查询【" + recipeName + "】的完整食谱信息，包括所需食材、厨具和烹饪步骤。";
+
+        String aiResponse = callAiApi(systemPrompt, userPrompt);
+        String jsonStr = extractJson(aiResponse);
+
+        JSONObject json = JSON.parseObject(jsonStr);
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("name", json.getString("name"));
+        result.put("englishName", json.getString("englishName"));
+        result.put("ingredients", json.getJSONArray("ingredients"));
+        result.put("tools", json.getJSONArray("tools"));
+        result.put("steps", json.getString("steps"));
+        result.put("cookingTime", json.getInteger("cookingTime"));
+        result.put("difficultyLevel", json.getString("difficultyLevel"));
+        result.put("cuisineStyle", json.getString("cuisineStyle"));
+        result.put("flavorProfile", json.getString("flavorProfile"));
+        result.put("suitableCrowd", json.getJSONArray("suitableCrowd"));
+        return result;
+    }
+
+    /**
      * 使用 MiniMax image-01 模型生成食谱图片
-     * @param recipeName 食谱名称（中文）
-     * @param englishName 英文名称
-     * @param prompt 英文图片描述 prompt
-     * @return 生成的图片URL
      */
     public String generateRecipeImage(String recipeName, String englishName, String prompt) {
         JSONObject requestBody = new JSONObject();

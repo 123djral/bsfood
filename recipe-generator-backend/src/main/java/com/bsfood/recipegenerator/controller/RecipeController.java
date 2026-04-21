@@ -281,4 +281,29 @@ public class RecipeController {
         }
         return result;
     }
+
+    /**
+     * 根据食谱名称查询完整食谱信息（食材、厨具、步骤、营养分析）
+     */
+    @PostMapping("/query")
+    public Map<String, Object> queryRecipe(@RequestBody Map<String, String> request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String recipeName = request.get("recipeName");
+            if (recipeName == null || recipeName.trim().isEmpty()) {
+                result.put("code", 400);
+                result.put("message", "食谱名称不能为空");
+                return result;
+            }
+            Map<String, Object> data = recipeService.queryRecipeByName(recipeName.trim());
+            result.put("code", 200);
+            result.put("message", "查询成功");
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "查询失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return result;
+    }
 }

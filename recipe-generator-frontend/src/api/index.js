@@ -57,7 +57,8 @@ export const recipeApi = {
   delete: (id, userId) => api.delete('/recipe/delete', { params: { id, userId } }),
   collect: (id) => api.post('/recipe/collect', null, { params: { id } }),
   collectPersonal: (recipeId, userId) => api.post('/recipe/collectPersonal', null, { params: { recipeId, userId } }),
-  collected: (userId, keyword, page, size) => api.get('/recipe/collected', { params: { userId, keyword, page, size } })
+  collected: (userId, keyword, page, size) => api.get('/recipe/collected', { params: { userId, keyword, page, size } }),
+  search: (recipeName) => api.post('/recipe/query', { recipeName })
 }
 
 // 营养相关

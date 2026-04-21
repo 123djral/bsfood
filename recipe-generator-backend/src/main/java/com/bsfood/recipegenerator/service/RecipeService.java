@@ -94,4 +94,11 @@ public interface RecipeService {
      * @return 分页结果
      */
     IPage<Recipe> searchCollectedRecipes(Long userId, String keyword, int page, int size);
+
+    /**
+     * 根据食谱名称查询完整食谱信息（食材、厨具、步骤、营养分析）
+     * @param recipeName 食谱名称
+     * @return 包含食谱详情和营养分析的Map
+     */
+    java.util.Map<String, Object> queryRecipeByName(String recipeName);
 }
